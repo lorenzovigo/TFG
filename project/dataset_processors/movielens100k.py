@@ -44,6 +44,12 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         test_set_items = self.preprocess_items(self.test_data)
         self.test_set = self.build_test_set(test_set_items, neg_ratio=negative_ratio_test)
 
+    def __len__(self):
+        return self.targets.shape[0]
+
+    def __getitem__(self, index):
+        return self.interactions[index]
+
     def load_dataset(self):
         # Check whether dataset is already downloaded or not
         if not os.path.exists(self.dataset_path):
