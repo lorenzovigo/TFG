@@ -34,6 +34,12 @@ class FactorizationMachineModel(torch.nn.Module):
         return out.squeeze(1)
 
     def predict(self, interactions, device):
+        """
+        Predicts the score for given interactions.
+        :param interactions: Interactions which score we will calculated (numpy array).
+        :param device: Device used to calculate the predictions.
+        :return: Predicted scores (tensor).
+        """
         # return the score, inputs are numpy arrays, outputs are tensors
 
         test_interactions = torch.from_numpy(interactions).to(dtype=torch.long, device=device)
