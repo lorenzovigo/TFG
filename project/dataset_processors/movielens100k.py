@@ -64,7 +64,8 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     """
 
     data_dir = 'data'
-    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/movielens/ml-dataset-splitted/movielens'
+    extract_path = f'{data_dir}/ml-100k'
+    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/movielens'
     url = 'https://drive.google.com/uc?id=1rE20sLow9sT2ULpBOOWqw2SEnpIm16OZ'
     downloaded_file = 'ml-dataset-splitted.zip'
     dataset_name = 'Movielens - 100k'
@@ -132,7 +133,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             # Extract dataset
             print(f'Extracting {self.dataset_name} dataset...')
             with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
-                zip_ref.extractall(self.dataset_path)
+                zip_ref.extractall(self.extract_path)
 
             # Delete zipfile
             os.remove(self.downloaded_file)
