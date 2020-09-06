@@ -71,7 +71,7 @@ def test(model, full_dataset, device, topk=10):
     HR, NDCG = [], []
 
     for user_test in full_dataset.test_set:
-        # For each user in the test set we get the gt_item # TODO duda: no sé qué es
+        # For each user in the test set we get the ground truth item
         gt_item = user_test[0][1]
 
         # We compute the predictions using our model and retrieve our recommendations (those with best score)
@@ -116,7 +116,7 @@ def train_and_test(model, optimizer, criterion, topk=10, epochs=30):
 tensorboard_config()
 full_dataset = MovieLens100kDataset()
 
-# TODO duda: entiendo que divide el dataset en batches, había varios imports posibles
+# We define our dataloader to generate batches
 data_loader = DataLoader(full_dataset, batch_size=256, shuffle=True, num_workers=0)
 
 # Needed only for GCN, TODO duda: construcción del grafo
@@ -124,7 +124,7 @@ X = sparse_mx_to_torch_sparse_tensor(identity(full_dataset.train_mat.shape[0]))
 edge_idx, edge_attr = from_scipy_sparse_matrix(full_dataset.train_mat)
 
 # We define our tools for prediction: model, criterion and optimizer
-# model = FactorizationMachineModel(full_dataset.field_dims[-1], 32).to(device) TODO que se pase por parámetro?
+# model = FactorizationMachineModel(full_dataset.field_dims[-1], 32).to(device)
 model = FactorizationMachineModel_withGCN(full_dataset.field_dims[-1], 64, X.to(device), edge_idx.to(device)).to(device)
 criterion = torch.nn.BCEWithLogitsLoss(reduction='mean')
 optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)

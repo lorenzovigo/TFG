@@ -14,13 +14,12 @@ class FactorizationMachineModel(torch.nn.Module):
         super().__init__()
 
         # field_dims == total of nodes (sum users + context)
-        # TODO duda: por qué no usamos esto?
         # self.linear = torch.nn.Linear(field_dims, 1, bias=True)
         self.linear = FeaturesLinear(field_dims)
         self.embedding = torch.nn.Embedding(field_dims, embed_dim, sparse=False)
         self.fm = FM_operation(reduce_sum=True)
 
-        # TODO duda no sé qué pinta el embedding otra vez, y es la inicialización de los parámetros?
+        # Parameter initialization
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 
     def forward(self, interaction_pairs):
@@ -28,7 +27,8 @@ class FactorizationMachineModel(torch.nn.Module):
         :param interaction_pairs: Long tensor of size ``(batch_size, num_fields)``
         """
 
-        # We compute the formula as it is, and then get rid of the dimensions to return a number (so I believe)
+        # We compute the formula as it is, and then get rid of the dimensions to return a number
+        # TODO we shouldn't send interaction_pairs once context is added.
         out = self.linear(interaction_pairs) + self.fm(self.embedding(interaction_pairs))
 
         return out.squeeze(1)

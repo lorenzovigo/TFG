@@ -3,12 +3,12 @@ from torch_geometric.nn import GCNConv
 
 
 class GraphModel(torch.nn.Module):
-    def __init__(self, field_dims, embed_dim, features, train_mat):
+    def __init__(self, field_dims, embed_dim, features, train_mat_edges):
 
         super().__init__()
 
-        self.A = train_mat
-        self.features = features
+        self.A = train_mat_edges
+        self.features = features  # so far, Identity matrix
         # GCNConv applies the convolution over the graph
         self.GCN_module = GCNConv(field_dims, embed_dim)
 
