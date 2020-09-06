@@ -64,7 +64,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     """
 
     data_dir = 'data'
-    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/movielens'
+    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/movielens/ml-dataset-splitted/movielens'
     url = 'https://drive.google.com/uc?id=1rE20sLow9sT2ULpBOOWqw2SEnpIm16OZ'
     downloaded_file = 'ml-dataset-splitted.zip'
     dataset_name = 'Movielens - 100k'
