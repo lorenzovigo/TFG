@@ -13,7 +13,8 @@ from dataset_processors.movielens100k import MovieLens100kDataset
 import os
 
 device = "cpu"
-
+if torch.cuda.is_available():
+    device = "cuda"
 
 def tensorboard_config():
     """Carries out needed tensorboard configuration."""
