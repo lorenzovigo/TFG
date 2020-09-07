@@ -14,7 +14,7 @@ import os
 
 device = "cpu"
 if torch.cuda.is_available():
-    device = "cuda"
+    device = torch.device("cuda")
 
 def tensorboard_config():
     """Carries out needed tensorboard configuration."""
