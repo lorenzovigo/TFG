@@ -65,7 +65,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
     data_dir = 'data'
     extract_path = f'{data_dir}/ml-100k'
-    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/movielens'
+    dataset_path = f'{data_dir}/ml-100k/ml-dataset-splitted/'
     url = 'https://drive.google.com/uc?id=1rE20sLow9sT2ULpBOOWqw2SEnpIm16OZ'
     downloaded_file = 'ml-dataset-splitted.zip'
     dataset_name = 'Movielens - 100k'
@@ -83,8 +83,8 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         colnames = ["user_id", 'item_id', 'label', 'timestamp']
 
         # Read several data from dataset files
-        self.data = pd.read_csv(f'{self.dataset_path}.train.rating', sep=sep, header=None, names=colnames).to_numpy()
-        self.test_data = pd.read_csv(f'{self.dataset_path}.test.rating', sep=sep, header=None, names=colnames).to_numpy()
+        self.data = pd.read_csv(f'{self.dataset_path}movielens.train.rating', sep=sep, header=None, names=colnames).to_numpy()
+        self.test_data = pd.read_csv(f'{self.dataset_path}movielens.test.rating', sep=sep, header=None, names=colnames).to_numpy()
 
         # Define targets (known interactions) and items (users and movies) taken from the dataset
         self.targets = self.data[:, 2]
@@ -190,17 +190,16 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             # Copy user and maintain last position to 0. Now we will need to update neg_triplet[1]
             neg_triplet = np.vstack([x, ] * neg_ratio)
             neg_triplet[:, 2] = np.zeros(neg_ratio)
+            used_j = []
 
-            # We take the ids of items the user has not interacted with
-            possible_negatives = np.where(self.train_mat[x[0]].toarray()[0] == 0)[0]
-
-            # Then, we filter those items in order to keep only the movies the user has not interacted with
-            possible_negatives = possible_negatives[self.max_users <= possible_negatives]
-            possible_negatives = possible_negatives[possible_negatives < self.max_items]
-
-            # TODO tengo una duda aquí (1 de agosto)
-            # We replace neg_triplet[1] with one of these movies in each negative sample
-            neg_triplet[:, 1] = np.random.choice(possible_negatives, neg_ratio, replace=False)
+        # TODO duda evitar js repetidos es correcto?
+            for idx in range(neg_ratio):
+                j = np.random.randint(self.max_users, self.max_items)
+                # IDEA: Loop to exclude true interactions (set to 1 in adj_train) user - item
+                while (x[0], j) in self.train_mat and j not in used_j:
+                    j = np.random.randint(self.max_users, self.max_items)
+                neg_triplet[:, 1][idx] = j
+                used_j.append(j)
             self.interactions.append(neg_triplet.copy())
 
         self.interactions = np.vstack(self.interactions)
