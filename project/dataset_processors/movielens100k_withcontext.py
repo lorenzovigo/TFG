@@ -11,7 +11,7 @@ import torch
 
 class MovieLens100kDataset(torch.utils.data.Dataset):
     """
-    Dataset processor for MovieLens - 100k with
+    Dataset processor for MovieLens - 100k
 
     Downloading and processing of the MovieLens dataset found online, with 100k rows.
     Items will be processed and we will perform negative sampling and build the test set.
@@ -73,17 +73,9 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     def __init__(self, negative_ratio_train=4, negative_ratio_test=99, sep='\t'):
         """
         Executes the whole pipeline, from downloading to fully processing the dataset.
-
-        Parameters
-        ----------
-        negative_ratio_train : int, optional
-            Number of negative samples generated for every interaction in the dataset.
-
-        negative_ratio_test : int, optional
-            Number of negative samples generated for every interaction in the test set.
-
-        sep : str, optional
-            Separator used in the dataset.
+        :param negative_ratio_train: Number of negative samples generated for every interaction in the dataset.
+        :param negative_ratio_test: Number of negative samples generated for every interaction in the test set.
+        :param sep: Separator used in the dataset.
         """
         # Download dataset
         self.load_dataset()
@@ -114,27 +106,15 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     def __len__(self):
         """
         Returns the number of interactions in the dataset after negative sampling.
-
-        Returns
-        -------
-        int
-            Number of interactions in the dataset after negative sampling.
+        :return: Number of interactions in the dataset after negative sampling.
         """
         return self.targets.shape[0]
 
     def __getitem__(self, index):
         """
         Retrieves an interaction from the dataset given an index.
-
-        Parameters
-        ----------
-        index : int
-            Index of the item to be retrieved.
-
-        Returns
-        -------
-        tuple
-            Interaction with the given index.
+        :param index: Index of the item to be retrieved.
+        :return: Interaction with the given index.
         """
         return self.interactions[index]
 
@@ -162,15 +142,8 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         """
         Gives the items new indexes so that they have unique ids.
 
-        Parameters
-        ----------
-        data : DataFrame
-            Items to be preprocessed.
-
-        Returns
-        -------
-        ndarray
-            Preprocessed items.
+        :param data: Items to be preprocessed.
+        :return: Preprocessed items.
         """
 
         # Whole method is dataset-specific
@@ -185,19 +158,9 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     def build_adjacency_matrix(self, dims, interactions):
         """
         Builds the adjacency matrix determined by a set of interactions.
-
-        Parameters
-        ----------
-        dims : int
-            The dimension the adjacency matrix should have.
-
-        interactions : ndarray
-            Set of known interactions.
-
-        Returns
-        -------
-        dok_matrix
-            Fully built adjacency matrix.
+        :param dims: The dimension the adjacency matrix should have.
+        :param interactions: Set of known interactions.
+        :return: Fully built adjacency matrix.
         """
         train_mat = sp.dok_matrix((dims, dims), dtype=np.float32)
         # For every interaction, we set the value as 1 in both grids that represent the pair of items that interact
@@ -207,18 +170,14 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
         return train_mat
 
+    # TODO: podríamos unificar los dos métodos siguientes (?). En el segundo no se usan los targets.
+
     def negative_sampling(self, items, neg_ratio):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
-
-        Parameters
-        ----------
-        items : ndarray
-            Preprocessed dataset items.
-
-        neg_ratio : int
-            How many negative samples we will produce for every positive sample in the dataset.
+        :param items: Preprocessed dataset items.
+        :param neg_ratio: How many negative samples we will produce for every positive sample in the dataset.
         """
         # We initialize an array where interactions will be saved
         self.interactions = []
@@ -231,15 +190,16 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             # Copy user and maintain last position to 0. Now we will need to update neg_triplet[1]
             neg_triplet = np.vstack([x, ] * neg_ratio)
             neg_triplet[:, 2] = np.zeros(neg_ratio)
-            used_js = []
+            used_j = []
 
+        # TODO duda evitar js repetidos es correcto?
             for idx in range(neg_ratio):
                 j = np.random.randint(self.max_users, self.max_items)
                 # IDEA: Loop to exclude true interactions (set to 1 in adj_train) user - item
-                while (x[0], j) in self.train_mat or j in used_js:
+                while (x[0], j) in self.train_mat and j not in used_j:
                     j = np.random.randint(self.max_users, self.max_items)
                 neg_triplet[:, 1][idx] = j
-                used_js.append(j)
+                used_j.append(j)
             self.interactions.append(neg_triplet.copy())
 
         self.interactions = np.vstack(self.interactions)
@@ -248,33 +208,31 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
-
-        Parameters
-        ----------
-        gt_test_interactions : ndarray
-            Ground truth items which should be retrieved by the model from the set created in this method.
-
-        neg_ratio : int
-            How many negative samples we will produce for every positive sample in the test set.
-
-        Returns
-        -------
-        list
-            Complete test set with both negative and positive samples.
+        :param gt_test_interactions: Preprocessed test set items.
+        :param neg_ratio: How many negative samples we will produce for every positive sample in the test set.
+        :return: Complete test set with both negative and positive samples.
         """
         # We initialize an array where the test set will be saved
         test_set = []
 
         for pair in tqdm(gt_test_interactions, desc="Building test set..."):
-            negatives = []
-            for t in range(neg_ratio):
-                j = np.random.randint(self.max_users, self.max_items)
-                while (pair[0], j) in self.train_mat or j == pair[1] or j in negatives:
-                    j = np.random.randint(self.max_users, self.max_items)
-                negatives.append(j)
-            # APPEND TEST SETS FOR SINGLE USER
-            single_user_test_set = np.vstack([pair, ] * (len(negatives) + 1))
+            # We take the ids of items the user has not interacted with
+            possible_negatives = np.where(self.train_mat[pair[0]].toarray()[0] == 0)[0]
+
+            # Then, we filter those items in order to keep only the movies the user has not interacted with
+            # TODO duda: en el código original comprueba que j no sea igual que el movie del pair (por qué? en negative sampling no se evitan repeticiones y esto no lo evita del todo)
+            possible_negatives = possible_negatives[self.max_users <= possible_negatives]
+            possible_negatives = possible_negatives[possible_negatives < self.max_items]
+            possible_negatives = possible_negatives[possible_negatives != pair[1]]
+
+            # We replace neg_triplet[1] with one of these movies in each negative sample
+            negatives = np.random.choice(possible_negatives, neg_ratio, replace=False)
+
+            # TODO esto se podría hacer con el esquema anterior
+            # We append pair and the negatives we generated to the test set
+            single_user_test_set = np.vstack([pair, ] * (len(negatives)+1))
             single_user_test_set[:, 1][1:] = negatives
+
             test_set.append(single_user_test_set.copy())
         return test_set
 
