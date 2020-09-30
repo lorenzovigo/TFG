@@ -101,8 +101,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         # We get our adjacency matrix dimension (max id) and build the matrix
         self.field_dims = np.max(self.items, axis=0) + 1
         self.max_users, self.max_items = self.field_dims
-        max_id = np.max(self.field_dims)
-        self.train_mat = self.build_adjacency_matrix(max_id, self.items.copy())
+        self.train_mat = self.build_adjacency_matrix(self.field_dims[-1], self.items.copy())
 
         # Generate train interactions with 4 negative samples for each positive
         self.negative_sampling(self.items, neg_ratio=negative_ratio_train)

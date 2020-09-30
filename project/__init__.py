@@ -10,6 +10,7 @@ from utils import getNDCG, getHitRatio, sparse_mx_to_torch_sparse_tensor
 from torch_geometric.utils import from_scipy_sparse_matrix
 from torch.utils.tensorboard import SummaryWriter
 from dataset_processors.movielens100k import MovieLens100kDataset
+from dataset_processors.movielens100k_withcontext import MovieLens100kDataset_WithContext
 import os
 
 device = "cpu"
@@ -115,12 +116,12 @@ def train_and_test(model, optimizer, criterion, topk=10, epochs=30):
 
 # Initial configurations, incluiding processing the dataset
 tensorboard_config()
-full_dataset = MovieLens100kDataset()
+full_dataset = MovieLens100kDataset_WithContext()
 
 # We define our dataloader to generate batches
 data_loader = DataLoader(full_dataset, batch_size=256, shuffle=True, num_workers=0)
 
-# Needed only for GCN, TODO duda: construcción del grafo
+# Needed only for GCN
 X = sparse_mx_to_torch_sparse_tensor(identity(full_dataset.train_mat.shape[0]))
 edge_idx, edge_attr = from_scipy_sparse_matrix(full_dataset.train_mat)
 
