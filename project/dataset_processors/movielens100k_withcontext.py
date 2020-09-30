@@ -105,6 +105,8 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         self.targets = self.data[:, 2]
         self.dataset = self.preprocess_dataset(self.data)
 
+        print("Taking context into account...")
+
         # We get our adjacency matrix dimension (max id) and build the matrix
         self.field_dims = np.cumsum(np.max(self.dataset, axis=0) - np.min(self.dataset, axis = 0) + 1)
         self.field_mins = np.min(self.dataset, axis=0)
@@ -206,25 +208,40 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
 
         return reindexed_items
 
-    def build_adjacency_matrix(self, dims, interactions): # TODO apatar a contexto (WIP)
+    def build_adjacency_matrix(self, dims, interactions):
         """
-        Builds the adjacency matrix determined by a set of interactions.
-        :param dims: The dimension the adjacency matrix should have.
-        :param interactions: Set of known interactions.
-        :return: Fully built adjacency matrix.
+        Builds the adjacency matrix determined by a set of interactions with contexts.
+
+        Parameters
+        ----------
+        dims : int
+            The dimension the adjacency matrix should have.
+
+        interactions : list
+            Set of known interactions.
+
+        Returns
+        -------
+        scipy.dok_matrix
+            Fully built adjacency matrix.
         """
         train_mat = sp.dok_matrix((dims, dims), dtype=np.float32)
         aux = np.delete(np.insert(self.field_dims, 0, 0), -1)
         # For every interaction, we set the value as 1 in both grids that represent the pair of items that interact
         for x in tqdm(interactions, desc="Building Adjacency Matrix..."):
+            # We fix the indices for the values of the context
             indices = x - self.field_mins + aux
-            train_mat[x[0], x[1]] = 1.0
-            indices[0], indices[1] = indices[1], indices[0]
-            train_mat[x[1], x[0]] = 1.0
+            # We fill the interactions
+            train_mat[indices[0], indices[1]] = 1.0
+            train_mat[indices[1], indices[0]] = 1.0
+            # We fill the positions for the context
+            for i in range(2, np.shape(indices)[0]):
+                train_mat[indices[0], indices[i]] = 1.0
+                train_mat[indices[1], indices[i]] = 1.0
 
         return train_mat
 
-    def negative_sampling(self, items, neg_ratio): # TODO adaptar a contexto
+    def negative_sampling(self, items, neg_ratio):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
@@ -247,7 +264,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
             self.interactions.append(x)
             # Copy user and maintain last position to 0. Now we will need to update neg_triplet[1]
             neg_triplet = np.vstack([x, ] * neg_ratio)
-            neg_triplet[:, 2] = np.zeros(neg_ratio)
+            neg_triplet[:, -1] = np.zeros(neg_ratio)
             used_js = []
 
             for idx in range(neg_ratio):
@@ -261,7 +278,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
 
         self.interactions = np.vstack(self.interactions)
 
-    def build_test_set(self, gt_test_interactions, neg_ratio): # TODO adaptar a contexto
+    def build_test_set(self, gt_test_interactions, neg_ratio):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
