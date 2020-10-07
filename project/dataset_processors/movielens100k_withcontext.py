@@ -53,11 +53,17 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
     load_dataset(self)
         Handles the dataset downloading.
 
-    preprocess_items(self, data)
+    preprocess_dataset(self, data)
         Deletes the target column and makes sure the item ids are unique.
+
+    add_last_clicked_item(self, dataset)
+        Uses the timestamp information to add the Last Clicked Item context to the dataset.
 
     build_adjacency_matrix(self, dims, interactions):
         Builds the adjacency matrix given the interactions between the items.
+
+    preprocess_test_items(self, data)
+        Makes sure every item in the test set has unique ids, even if the items are different entities.
 
     negative_sampling(self, items, neg_ratio)
         Generates negative samples in the dataset.
@@ -100,9 +106,12 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
 
         # Define targets (known interactions) and dataset (items [users, movies] and context) taken from the dataset
         self.targets = self.data[:, 2]
-        self.dataset = self.preprocess_items(self.data)
+        self.dataset = self.preprocess_dataset(self.data)
 
+        print(self.dataset.shape)
         print("Taking context into account...")
+        print(self.dataset.shape)
+        self.dataset = self.add_last_clicked_item(self.dataset)
 
         # We get our adjacency matrix dimension (max id) and build the matrix
         self.field_dims = np.cumsum(np.max(self.dataset, axis=0) - np.min(self.dataset, axis = 0) + 1)
@@ -114,7 +123,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         self.negative_sampling(self.dataset, neg_ratio=negative_ratio_train)
 
         # We define the test set items as we did with the dataset and generate test negative samples
-        test_dataset = self.preprocess_items(self.test_data)
+        test_dataset = self.preprocess_test_items(self.test_data)
         self.test_set = self.build_test_set(test_dataset, neg_ratio=negative_ratio_test)
 
     def __len__(self):
@@ -164,7 +173,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
             # Delete zipfile
             os.remove(self.downloaded_file)
 
-    def preprocess_items(self, data):
+    def preprocess_dataset(self, data):
         """
         Deletes the target column and makes sure the item ids are unique.
     
@@ -187,6 +196,28 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         reindexed_items[:, 1] = reindexed_items[:, 1] + users + 1
 
         return reindexed_items
+
+    def add_last_clicked_item(self, dataset):
+        """
+        Uses the timestamp information to add the Last Clicked Item context to the dataset.
+
+        Parameters
+        ----------
+        dataset : ndarray
+            Dataset with timestamp as last column # TODO no sería mejor como primer contexto?
+
+        Returns
+        -------
+        ndarray
+            Dataset with the Last Clicked Item context added.
+        """
+        # We sort the dataset by the timestamp. TODO duda: no tiene en cuenta el usuario o sí?
+        sorted_data = dataset[dataset[:, -1].argsort()]
+        # We add as last clicked item the item of the previous interaction. Except for the first interaction that gets a 1 TODO duda: why?
+        # We don't use the last interaction's movie since there is no following interaction.
+        sorted_data[:, -1] = np.concatenate(([1], sorted_data[:-1][:, 1]))
+
+        return sorted_data
 
     def build_adjacency_matrix(self, dims, interactions):
         """
@@ -257,6 +288,22 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
             self.interactions.append(neg_triplet.copy())
 
         self.interactions = np.vstack(self.interactions)
+
+    def preprocess_test_items(self, data): # TODO adaptar a contexto
+        """
+        Gives the test items new indexes so that they have unique ids.
+        :param data: Test items to be preprocessed.
+        :return: Preprocessed items.
+        """
+
+        # Whole method is dataset-specific
+        reindexed_items = data[:, :2].astype(np.int) - 1  # IDs start by 1 and we want them to start by 0
+        # We get the highest user ID and highest movie ID
+        users, items = np.max(reindexed_items, axis=0)[:2] + 1
+        # We want IDs to be unique among users and movies, so we reindex movies
+        reindexed_items[:, 1] = reindexed_items[:, 1] + users
+
+        return reindexed_items
 
     def build_test_set(self, gt_test_interactions, neg_ratio):
         """
