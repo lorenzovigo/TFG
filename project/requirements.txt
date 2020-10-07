@@ -1,7 +1,7 @@
 numpy~=1.15.0
 pandas~=1.0.5
 # tensorboard
-torchvision>=1.1
+torchvision
 torch-scatter
 torch-sparse
 torch-cluster
