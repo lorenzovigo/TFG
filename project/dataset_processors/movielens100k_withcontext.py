@@ -53,11 +53,8 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
     load_dataset(self)
         Handles the dataset downloading.
 
-    preprocess_dataset(self, data)
+    preprocess_items(self, data)
         Deletes the target column and makes sure the item ids are unique.
-
-    preprocess_test_items(self, data)
-        Makes sure every item in the test set has unique ids, even if the items are different entities.
 
     build_adjacency_matrix(self, dims, interactions):
         Builds the adjacency matrix given the interactions between the items.
@@ -103,7 +100,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
 
         # Define targets (known interactions) and dataset (items [users, movies] and context) taken from the dataset
         self.targets = self.data[:, 2]
-        self.dataset = self.preprocess_dataset(self.data)
+        self.dataset = self.preprocess_items(self.data)
 
         print("Taking context into account...")
 
@@ -117,7 +114,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         self.negative_sampling(self.dataset, neg_ratio=negative_ratio_train)
 
         # We define the test set items as we did with the dataset and generate test negative samples
-        test_dataset = self.preprocess_test_items(self.test_data)
+        test_dataset = self.preprocess_items(self.test_data)
         self.test_set = self.build_test_set(test_dataset, neg_ratio=negative_ratio_test)
 
     def __len__(self):
@@ -167,7 +164,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
             # Delete zipfile
             os.remove(self.downloaded_file)
 
-    def preprocess_dataset(self, data):
+    def preprocess_items(self, data):
         """
         Deletes the target column and makes sure the item ids are unique.
     
@@ -188,23 +185,6 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         users = np.max(reindexed_items, axis=0)[:1]
         # We want IDs to be unique among users and movies, so we reindex movies
         reindexed_items[:, 1] = reindexed_items[:, 1] + users + 1
-
-        return reindexed_items
-
-    def preprocess_test_items(self, data): # TODO adaptar a contexto
-        """
-        Gives the test items new indexes so that they have unique ids.
-
-        :param data: Test items to be preprocessed.
-        :return: Preprocessed items.
-        """
-
-        # Whole method is dataset-specific
-        reindexed_items = data[:, :2].astype(np.int) - 1  # IDs start by 1 and we want them to start by 0
-        # We get the highest user ID and highest movie ID
-        users, items = np.max(reindexed_items, axis=0)[:2] + 1
-        # We want IDs to be unique among users and movies, so we reindex movies
-        reindexed_items[:, 1] = reindexed_items[:, 1] + users
 
         return reindexed_items
 
