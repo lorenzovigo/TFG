@@ -116,6 +116,7 @@ def train_and_test(model, optimizer, criterion, topk=10, epochs=30):
 
 # Initial configurations, incluiding processing the dataset
 tensorboard_config()
+# full_dataset = MovieLens100kDataset()
 full_dataset = MovieLens100kDataset_WithContext()
 
 # We define our dataloader to generate batches

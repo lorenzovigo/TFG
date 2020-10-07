@@ -223,7 +223,7 @@ class MovieLens100kDataset_WithContext(torch.utils.data.Dataset):
         Returns
         -------
         scipy.dok_matrix
-            Fully built adjacency matrix.
+            Fully built adjacency matrix.J
         """
         train_mat = sp.dok_matrix((dims, dims), dtype=np.float32)
         aux = np.delete(np.insert(self.field_dims, 0, 0), -1)
