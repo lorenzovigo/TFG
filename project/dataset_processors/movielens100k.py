@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np
-import os
-import urllib.request
-import zipfile
 import scipy.sparse as sp
 from tqdm import tqdm
+from IPython import embed
+# from .. import utils
 
 import torch
 
@@ -70,7 +69,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
     downloaded_file = 'ml-dataset-splitted.zip'
     dataset_name = 'Movielens - 100k'
 
-    def __init__(self, negative_ratio_train=4, negative_ratio_test=99, sep='\t'):
+    def __init__(self, negative_ratio_train=4, negative_ratio_test=99, sep='\t', add_context=False):
         """
         Executes the whole pipeline, from downloading to fully processing the dataset.
 
@@ -85,8 +84,8 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         sep : str, optional
             Separator used in the dataset.
         """
-        # Download dataset
-        self.load_dataset()
+        # TODO: Download dataset
+        # utils.load_dataset()
 
         colnames = ["user_id", 'item_id', 'label', 'timestamp']
 
@@ -98,13 +97,17 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         self.targets = self.data[:, 2]
         self.items = self.preprocess_items(self.data)
 
+        # TODO:
+        # if add_context:
+        #     self.dataset = self.add_last_clicked_item(self.dataset)
+
         # We get our adjacency matrix dimension (max id) and build the matrix
         self.field_dims = np.max(self.items, axis=0) + 1
         self.max_users, self.max_items = self.field_dims
         self.train_mat = self.build_adjacency_matrix(self.field_dims[-1], self.items.copy())
 
         # Generate train interactions with 4 negative samples for each positive
-        self.negative_sampling(self.items, neg_ratio=negative_ratio_train)
+        self.negative_sampling(neg_ratio=negative_ratio_train)
 
         # We define the test set items as we did with the dataset and generate test negative samples
         test_set_items = self.preprocess_items(self.test_data)
@@ -137,26 +140,6 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         """
         return self.interactions[index]
 
-    def load_dataset(self):
-        """Downloads and extracts the MovieLens - 100k dataset zip file."""
-        # Check whether dataset is already downloaded or not
-        if not os.path.exists(self.dataset_path):
-            # Download dataset
-            print(f'Downloading {self.dataset_name} dataset...')
-            urllib.request.urlretrieve(self.url, self.downloaded_file)
-
-            # Create data folder if it doesn't exist
-            if not os.path.exists(self.data_dir):
-                os.mkdir(self.data_dir)
-
-            # Extract dataset
-            print(f'Extracting {self.dataset_name} dataset...')
-            with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
-                zip_ref.extractall(self.extract_path)
-
-            # Delete zipfile
-            os.remove(self.downloaded_file)
-
     def preprocess_items(self, data):
         """
         Gives the items new indexes so that they have unique ids.
@@ -183,6 +166,8 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
     def build_adjacency_matrix(self, dims, interactions):
         """
+                                MOVER A UTILS
+
         Builds the adjacency matrix determined by a set of interactions.
 
         Parameters
@@ -206,7 +191,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
         return train_mat
 
-    def negative_sampling(self, items, neg_ratio):
+    def negative_sampling(self, neg_ratio=4):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
@@ -222,7 +207,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         # We initialize an array where interactions will be saved
         self.interactions = []
         # We put together the item pairs with their respective targets
-        data = np.c_[(items, self.targets)].astype(int)
+        data = np.c_[(self.items, self.targets)].astype(int)
 
         for x in tqdm(data, desc="Performing negative sampling on test data..."):  # x are triplets (u, i , 1)
             # Append positive interaction
