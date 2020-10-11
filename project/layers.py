@@ -1,4 +1,4 @@
-import torch
+import torch # TODO documentar
 
 
 class FeaturesLinear(torch.nn.Module):
@@ -39,4 +39,6 @@ class FM_operation(torch.nn.Module):
 
         if self.reduce_sum:
             ix = torch.sum(ix, dim=1, keepdim=True)
+        else:
+            ix = torch.mean(ix, dim=1, keepdim=True)
         return 0.5 * ix

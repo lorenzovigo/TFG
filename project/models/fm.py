@@ -11,14 +11,14 @@ class FactorizationMachineModel(torch.nn.Module):
         S Rendle, Factorization Machines, 2010.
     """
 
-    def __init__(self, field_dims, embed_dim):
+    def __init__(self, field_dims, embed_dim, reduce_sum=True):
         super().__init__()
 
         # field_dims == total of nodes (sum users + context)
         # self.linear = torch.nn.Linear(field_dims, 1, bias=True)
         self.linear = FeaturesLinear(field_dims)
         self.embedding = torch.nn.Embedding(field_dims, embed_dim, sparse=False)
-        self.fm = FM_operation(reduce_sum=True)
+        self.fm = FM_operation(reduce_sum)
 
         # Parameter initialization
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)
