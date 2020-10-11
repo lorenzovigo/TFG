@@ -87,7 +87,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         # TODO: Download dataset
         # utils.load_dataset()
 
-        colnames = ["user_id", 'item_id', 'label', 'timestamp']
+        colnames = ["user_id", 'item_id', 'label', 'timestamp'] # TODO: Generalizar
 
         # Read several data from dataset files
         self.data = pd.read_csv(f'{self.dataset_path}movielens.train.rating', sep=sep, header=None, names=colnames).to_numpy()
@@ -228,7 +228,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
         self.interactions = np.vstack(self.interactions)
 
-    def build_test_set(self, gt_test_interactions, neg_ratio):
+    def build_test_set(self, gt_test_interactions, neg_ratio=99):
         """
         Every known interaction is considered a positive sample.
         This method generates random negative samples from items that have not interacted with each other.
