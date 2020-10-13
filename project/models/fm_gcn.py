@@ -11,14 +11,14 @@ class FactorizationMachineModel_withGCN(torch.nn.Module):
         S Rendle, Factorization Machines, 2010.
     """
 
-    def __init__(self, field_dims, embed_dim, X, A, reduce_sum=True):
+    def __init__(self, field_dims, embed_dim, X, A, reduce_sum=True, fm_operation=True):
         super().__init__()
 
         self.linear = FeaturesLinear(field_dims)
         # This is the only thing that changes from fmm
         # self.embedding = torch.nn.Embedding(field_dims, embed_dim, sparse=False)
         self.embedding = GraphModel(field_dims, embed_dim, X, A)
-        self.fm = FM_operation(reduce_sum)
+        self.fm = FM_operation(reduce_sum, fm_operation)
 
         # torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 

@@ -24,18 +24,24 @@ class FM_operation(torch.nn.Module):
 
     # We use this layer as a representation of FM part of the equation
 
-    def __init__(self, reduce_sum=True):
+    def __init__(self, reduce_sum=True, fm_operation=True):
         super().__init__()
         self.reduce_sum = reduce_sum
+        self.fm_operation = fm_operation
 
     def forward(self, x):
         """
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
         """
 
-        square_of_sum = torch.sum(x, dim=1) ** 2 #S1
-        sum_of_square = torch.sum(x ** 2, dim=1) #S2
-        ix = square_of_sum - sum_of_square
+        if self.fm_operation:
+            square_of_sum = torch.sum(x, dim=1) ** 2 #S1
+            sum_of_square = torch.sum(x ** 2, dim=1) #S2
+            ix = square_of_sum - sum_of_square
+        else:
+            print(x.size())
+            ix = torch.matmul(x.permute(0, 2, 1), x)
+            print(ix.size())
 
         if self.reduce_sum:
             ix = torch.sum(ix, dim=1, keepdim=True)
