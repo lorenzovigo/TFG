@@ -38,13 +38,14 @@ class FM_operation(torch.nn.Module):
             square_of_sum = torch.sum(x, dim=1) ** 2 #S1
             sum_of_square = torch.sum(x ** 2, dim=1) #S2
             ix = square_of_sum - sum_of_square
+            if self.reduce_sum:
+                ix = torch.sum(ix, dim=1, keepdim=True)
+            else:
+                ix = torch.mean(ix, dim=1, keepdim=True)
+            print (ix.size())
+            return 0.5 * ix
         else:
-            print(x.size())
-            ix = torch.matmul(x.permute(0, 2, 1), x)
-            print(ix.size())
+            ix = torch.bmm(x[:, :1, :], x[:, 1:, :].permute(0, 2, 1))
+            return torch.squeeze(ix, dim=1)
 
-        if self.reduce_sum:
-            ix = torch.sum(ix, dim=1, keepdim=True)
-        else:
-            ix = torch.mean(ix, dim=1, keepdim=True)
-        return 0.5 * ix
+

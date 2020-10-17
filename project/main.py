@@ -164,7 +164,7 @@ if __name__ == '__main__':
         edge_idx, edge_attr = from_scipy_sparse_matrix(full_dataset.train_mat)
         model = FactorizationMachineModel_withGCN(full_dataset.field_dims[-1], 64, X.to(device), edge_idx.to(device), reduce_sum=reduce_sum, fm_operation=fm_operation).to(device)
 
-    criterion = torch.nn.BCEWithLogitsLoss(reduction='mean') # TODO sum or mean aquí?
+    criterion = torch.nn.BCEWithLogitsLoss(reduction='mean')
     optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
 
     # Check our model's performance before training
