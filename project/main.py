@@ -11,7 +11,6 @@ from scipy.sparse import identity
 
 from dataset_processors.movielens100k import MovieLens100kDataset
 from models.fm import FactorizationMachineModel
-from models.fm_gcn import FactorizationMachineModel_withGCN
 from utils import getNDCG, getHitRatio, sparse_mx_to_torch_sparse_tensor
 
 def tensorboard_config():
@@ -119,7 +118,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--dataset", default="movielens100k", choices=["movielens100k"], help="Dataset to process.")
     parser.add_argument("--add_context", default=False, type=lambda x: bool(strtobool(str(x))), help="Include context in dataset.")
-    parser.add_argument("--model", choices=['fm', 'fm_gcn', 'mf'], default='fm_gcn', help="Model used to compute predictions.")
+    parser.add_argument("--model", choices=['fm', 'mf'], default='fm', help="Model used to compute predictions.")
+    parser.add_argument("--gcn", default=True, type=lambda x: bool(strtobool(str(x))), help="Use GCN in fm model.")
     parser.add_argument("--epochs", type=int, default=100, help="Number of training epochs.")
     parser.add_argument("--top_k", type=int, default=10, help="Top k recommendations to compute.")
     parser.add_argument("--neg_sample_ratio", type=int, default=4, help="Negative sample ratio for training.")
@@ -157,12 +157,13 @@ if __name__ == '__main__':
     if args.model == 'mf':
         model = 0
     elif args.model == 'fm':
-        model = FactorizationMachineModel(full_dataset.field_dims[-1], 32, reduce_sum=reduce_sum, fm_operation=fm_operation).to(device)
-    else:
-        X = sparse_mx_to_torch_sparse_tensor(identity(full_dataset.train_mat.shape[0]))
-        # We retrieve the graph's edges and send both them and graph to device in the next two lines
-        edge_idx, edge_attr = from_scipy_sparse_matrix(full_dataset.train_mat)
-        model = FactorizationMachineModel_withGCN(full_dataset.field_dims[-1], 64, X.to(device), edge_idx.to(device), reduce_sum=reduce_sum, fm_operation=fm_operation).to(device)
+        if args.gcn:
+            X = sparse_mx_to_torch_sparse_tensor(identity(full_dataset.train_mat.shape[0]))
+            # We retrieve the graph's edges and send both them and graph to device in the next two lines
+            edge_idx, edge_attr = from_scipy_sparse_matrix(full_dataset.train_mat)
+            model = FactorizationMachineModel(full_dataset.field_dims[-1], 64, gcn=args.gcn, X=X.to(device), A=edge_idx.to(device), reduce_sum=reduce_sum, fm_operation=fm_operation).to(device)
+        else:
+            model = FactorizationMachineModel(full_dataset.field_dims[-1], 32, gcn=args.gcn, reduce_sum=reduce_sum, fm_operation=fm_operation).to(device)
 
     criterion = torch.nn.BCEWithLogitsLoss(reduction='mean')
     optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)

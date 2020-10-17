@@ -2,6 +2,8 @@ import torch
 from layers import FeaturesLinear, FM_operation
 from IPython import embed
 
+from models.gm import GraphModel
+
 
 class FactorizationMachineModel(torch.nn.Module):
     """
@@ -11,17 +13,21 @@ class FactorizationMachineModel(torch.nn.Module):
         S Rendle, Factorization Machines, 2010.
     """
 
-    def __init__(self, field_dims, embed_dim, reduce_sum=True, fm_operation=True):
+    def __init__(self, field_dims, embed_dim, X=None, A=None, gcn=True, reduce_sum=True, fm_operation=True):
         super().__init__()
 
         # field_dims == total of nodes (sum users + context)
         # self.linear = torch.nn.Linear(field_dims, 1, bias=True)
         self.linear = FeaturesLinear(field_dims)
-        self.embedding = torch.nn.Embedding(field_dims, embed_dim, sparse=False)
+        if gcn:
+            self.embedding = GraphModel(field_dims, embed_dim, X, A)
+        else:
+            self.embedding = torch.nn.Embedding(field_dims, embed_dim, sparse=False)
+            # Parameter initialization TODO duda también para gcn?
+            torch.nn.init.xavier_uniform_(self.embedding.weight.data)
+
         self.fm = FM_operation(reduce_sum, fm_operation)
 
-        # Parameter initialization
-        torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 
     def forward(self, interaction_pairs):
         """
