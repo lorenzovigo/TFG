@@ -87,7 +87,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             Separator used in the dataset.
         """
         # TODO: Download dataset
-        utils.load_dataset()
+        self.load_dataset()
 
         colnames = ["user_id", 'item_id', 'label', 'timestamp'] # TODO: Generalizar
 
