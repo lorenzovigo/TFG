@@ -1,28 +1,6 @@
 import numpy as np
 import math
 import torch
-import os, urllib, zipfile
-
-
-def load_dataset(self):
-    """Downloads and extracts the MovieLens - 100k dataset zip file."""
-    # Check whether dataset is already downloaded or not
-    if not os.path.exists(self.dataset_path):
-        # Download dataset
-        print(f'Downloading {self.dataset_name} dataset...')
-        urllib.request.urlretrieve(self.url, self.downloaded_file)
-
-        # Create data folder if it doesn't exist
-        if not os.path.exists(self.data_dir):
-            os.mkdir(self.data_dir)
-
-        # Extract dataset
-        print(f'Extracting {self.dataset_name} dataset...')
-        with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
-            zip_ref.extractall(self.extract_path)
-
-        # Delete zipfile
-        os.remove(self.downloaded_file)
 
 
 def getHitRatio(recommend_list, gt_item):
