@@ -1,12 +1,9 @@
 import pandas as pd
 import numpy as np
-import scipy.sparse as sp
 from tqdm import tqdm
 import utils
 import os, urllib, zipfile
 from IPython import embed
-# from .. import utils
-
 import torch
 
 
@@ -102,18 +99,21 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         # TODO:
         # if add_context:
         #     self.dataset = self.add_last_clicked_item(self.dataset)
+        # else:
+        self.dataset = self.items
 
         # We get our adjacency matrix dimension (max id) and build the matrix
-        self.field_dims = np.max(self.items, axis=0) + 1
+        self.field_dims = np.cumsum(np.max(self.dataset, axis=0) - np.min(self.dataset, axis = 0) + 1)
+        self.field_mins = np.min(self.dataset, axis=0)
         self.max_users, self.max_items = self.field_dims
-        self.train_mat = self.build_adjacency_matrix(self.field_dims[-1], self.items.copy())
+        self.train_mat = utils.build_adjacency_matrix(self.field_dims, self.field_mins, self.items.copy())
 
         # Generate train interactions with 4 negative samples for each positive
         self.negative_sampling(neg_ratio=negative_ratio_train)
 
         # We define the test set items as we did with the dataset and generate test negative samples
         test_set_items = self.preprocess_items(self.test_data)
-        self.test_set = self.build_test_set(test_set_items, neg_ratio=negative_ratio_test)
+        self.test_set = utils.build_test_set(test_set_items, self.max_users, self.max_items, self.train_mat, neg_ratio=negative_ratio_test)
 
     def __len__(self):
         """
@@ -186,33 +186,6 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
         return reindexed_items
 
-    def build_adjacency_matrix(self, dims, interactions):
-        """
-                                MOVER A UTILS
-
-        Builds the adjacency matrix determined by a set of interactions.
-
-        Parameters
-        ----------
-        dims : int
-            The dimension the adjacency matrix should have.
-
-        interactions : ndarray
-            Set of known interactions.
-
-        Returns
-        -------
-        dok_matrix
-            Fully built adjacency matrix.
-        """
-        train_mat = sp.dok_matrix((dims, dims), dtype=np.float32)
-        # For every interaction, we set the value as 1 in both grids that represent the pair of items that interact
-        for x in tqdm(interactions, desc="Building Adjacency Matrix..."):
-            train_mat[x[0], x[1]] = 1.0
-            train_mat[x[1], x[0]] = 1.0
-
-        return train_mat
-
     def negative_sampling(self, neg_ratio=4):
         """
         Every known interaction is considered a positive sample.
@@ -249,38 +222,3 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             self.interactions.append(neg_triplet.copy())
 
         self.interactions = np.vstack(self.interactions)
-
-    def build_test_set(self, gt_test_interactions, neg_ratio=99):
-        """
-        Every known interaction is considered a positive sample.
-        This method generates random negative samples from items that have not interacted with each other.
-
-        Parameters
-        ----------
-        gt_test_interactions : ndarray
-            Ground truth items which should be retrieved by the model from the set created in this method.
-
-        neg_ratio : int
-            How many negative samples we will produce for every positive sample in the test set.
-
-        Returns
-        -------
-        list
-            Complete test set with both negative and positive samples.
-        """
-        # We initialize an array where the test set will be saved
-        test_set = []
-
-        for pair in tqdm(gt_test_interactions, desc="Building test set..."):
-            negatives = []
-            for t in range(neg_ratio):
-                j = np.random.randint(self.max_users, self.max_items)
-                while (pair[0], j) in self.train_mat or j == pair[1] or j in negatives:
-                    j = np.random.randint(self.max_users, self.max_items)
-                negatives.append(j)
-            # APPEND TEST SETS FOR SINGLE USER
-            single_user_test_set = np.vstack([pair, ] * (len(negatives) + 1))
-            single_user_test_set[:, 1][1:] = negatives
-            test_set.append(single_user_test_set.copy())
-        return test_set
-
