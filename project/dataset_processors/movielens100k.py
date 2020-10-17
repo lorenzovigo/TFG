@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp
 from tqdm import tqdm
+import utils
 from IPython import embed
 # from .. import utils
 
@@ -85,7 +86,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             Separator used in the dataset.
         """
         # TODO: Download dataset
-        # utils.load_dataset()
+        utils.load_dataset()
 
         colnames = ["user_id", 'item_id', 'label', 'timestamp'] # TODO: Generalizar
 
