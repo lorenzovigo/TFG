@@ -42,7 +42,6 @@ class FM_operation(torch.nn.Module):
                 ix = torch.sum(ix, dim=1, keepdim=True)
             else:
                 ix = torch.mean(ix, dim=1, keepdim=True)
-            print (ix.size())
             return 0.5 * ix
         else:
             ix = torch.bmm(x[:, :1, :], x[:, 1:, :].permute(0, 2, 1))
