@@ -83,10 +83,10 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         sep : str, optional
             Separator used in the dataset.
         """
-        # TODO: Download dataset
+        # TODO: Change dataset
         self.load_dataset()
 
-        colnames = ["user_id", 'item_id', 'label', 'timestamp'] # TODO: Generalizar
+        colnames = ["user_id", 'item_id', 'label', 'timestamp']
 
         # Read several data from dataset files
         self.data = pd.read_csv(f'{self.dataset_path}movielens.train.rating', sep=sep, header=None, names=colnames).to_numpy()

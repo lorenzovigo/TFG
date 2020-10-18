@@ -6,7 +6,7 @@ import torch
 from utils import getHitRatio, getNDCG, getRMSE
 
 
-def train(model, optimizer, criterion, data_loader, device, log_interval=100):
+def train(model, optimizer, criterion, data_loader, device):
     """
     One epoch training for our given model.
     :param model: Model to be trained.
@@ -69,8 +69,7 @@ def test(model, test_set, device, topk=10):
     return mean(HR), mean(NDCG), math.sqrt(mean(RMSE))
 
 
-def run(model, optimizer, criterion, data_loader, full_dataset, device, epochs=100, top_k=10):
-    tb = False
+def run(model, optimizer, criterion, data_loader, full_dataset, writer, device, tb=True, epochs=100, top_k=10):
     for epoch_i in range(epochs):
         # We train our model in every epoch and compute our metrics afterwards.
         # TODO data_loader.dataset.negative_sampling() dentro de train o aquí, donde es correcto?
@@ -78,9 +77,11 @@ def run(model, optimizer, criterion, data_loader, full_dataset, device, epochs=1
         hr, ndcg, rmse = test(model, full_dataset.test_set, device, topk=top_k)
 
         print(f'epoch {epoch_i}:')
-        print(f'training loss = {train_loss:.4f} | Eval: HR@{top_k} = {hr:.4f}, NDCG@{top_k} = {ndcg:.4f}, RMSE@{top_k} = {rmse:.4f} ')
+        print(
+            f'training loss = {train_loss:.4f} | Eval: HR@{top_k} = {hr:.4f}, NDCG@{top_k} = {ndcg:.4f}, RMSE@{top_k} = {rmse:.4f} ')
         print('\n')
-        # if tb: TODO
-        #    tb_fm.add_scalar('train/loss', train_loss, epoch_i)
-        #    tb_fm.add_scalar('eval/HR@{topk}', hr, epoch_i)
-        #    tb_fm.add_scalar('eval/NDCG@{topk}', ndcg, epoch_i)
+        if tb:
+            writer.add_scalar('train/loss', train_loss, epoch_i)
+            writer.add_scalar('eval/HR@{top_k}', hr, epoch_i)
+            writer.add_scalar('eval/NDCG@{top_k}', ndcg, epoch_i)
+            writer.add_scalar('eval/RMSE@{top_k}', rmse, epoch_i)

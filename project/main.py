@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 from distutils.util import strtobool
 from statistics import mean
 
@@ -14,14 +15,19 @@ from epochs import test, run
 from models.fm import FactorizationMachineModel
 from utils import getNDCG, getHitRatio, sparse_mx_to_torch_sparse_tensor
 
-def tensorboard_config():
+def tensorboard_config(args):
     """Carries out needed tensorboard configuration."""
-    logs_base_dir = "runs"
-    os.makedirs(logs_base_dir, exist_ok=True)
 
-    global tb_fm, tb_gcn
-    tb_fm = SummaryWriter(log_dir=f'{logs_base_dir}/{logs_base_dir}_FM/')
-    tb_gcn = SummaryWriter(log_dir=f'{logs_base_dir}/{logs_base_dir}_GCN/')
+    # for visualization
+    date = datetime.now().strftime('%y%m%d%H%M%S')
+    global writer
+    if args.logs:
+        if len(args.logsname) == 0:
+            writer = SummaryWriter(log_dir=f'logs/logs_{date}_{args.model}_{args.gcn}_{args.operation}_{args.reduction}/')
+        else:
+            writer = SummaryWriter(log_dir=f'logs/logs_{args.logsname}/')
+    else:
+        writer = SummaryWriter(log_dir=f'logs/undesired/')
 
 
 def main(args):
@@ -41,7 +47,8 @@ def main(args):
         device = "cpu"
 
     # Initial configurations, incluiding processing the dataset
-    # TODO tensorboard_config()
+    tensorboard_config(args)
+
     if args.dataset == "movielens100k":
         full_dataset = MovieLens100kDataset(add_context=args.add_context,
                                             negative_ratio_train=args.neg_sample_ratio,
@@ -78,13 +85,14 @@ def main(args):
     print("initial HR: ", hr)
     print("initial NDCG: ", ndcg)
     print("initial RMSE ", rmse)
+    writer.add_scalar('initial/HR@{top_k}', hr)
+    writer.add_scalar('initial/NDCG@{top_k}', ndcg)
+    writer.add_scalar('initial/RMSE@{top_k}', rmse)
 
-    # Training initialization. TODO pasar tb_fm
-    run(model, optimizer, criterion, data_loader, full_dataset, device, top_k=args.top_k, epochs=args.epochs)
+    # Training initialization.
+    run(model, optimizer, criterion, data_loader, full_dataset, writer, device, tb=args.logs, top_k=args.top_k, epochs=args.epochs)
 
-    # TODO tengo que implementar los logs de tensorboard aquí "½tensorboard --logdir runs"
-    # tb_fm.close()
-    # tb_gcn.close()
+    writer.close()
 
 if __name__ == '__main__':
     import argparse
@@ -103,6 +111,8 @@ if __name__ == '__main__':
     parser.add_argument("--reduction", choices=['mean', 'sum'], default='sum')
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
+    parser.add_argument("--logs", default=True, type=lambda x: bool(strtobool(str(x))), help="Enable logging.")
+    parser.add_argument("--logsname", default="", type=str, help="Custon log file name.")
 
     args = parser.parse_args()
 

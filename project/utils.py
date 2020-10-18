@@ -33,6 +33,7 @@ def getNDCG(recommend_list, gt_item):
         return 0
 
 def getRMSE(predictions):
+    # TODO wrong
     return math.pow(predictions[0]-torch.max(predictions), 2)
 
 
