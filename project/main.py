@@ -1,8 +1,5 @@
-import os
-import sys
 from datetime import datetime
 from distutils.util import strtobool
-from statistics import mean
 
 import torch
 from torch.utils.data import DataLoader
@@ -13,7 +10,7 @@ from scipy.sparse import identity
 from dataset_processors.movielens100k import MovieLens100kDataset
 from epochs import test, run
 from models.fm import FactorizationMachineModel
-from utils import getNDCG, getHitRatio, sparse_mx_to_torch_sparse_tensor
+from utils import sparse_mx_to_torch_sparse_tensor
 
 def tensorboard_config(args):
     """Carries out needed tensorboard configuration."""
@@ -84,7 +81,7 @@ def main(args):
     hr, ndcg, rmse = test(model, full_dataset.test_set, device, topk=args.top_k)
     print("initial HR: ", hr)
     print("initial NDCG: ", ndcg)
-    print("initial RMSE ", rmse)
+    print("initial RMSE: ", rmse)
     writer.add_scalar('initial/HR@{top_k}', hr)
     writer.add_scalar('initial/NDCG@{top_k}', ndcg)
     writer.add_scalar('initial/RMSE@{top_k}', rmse)

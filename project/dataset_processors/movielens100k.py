@@ -94,25 +94,22 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
 
         # Define targets (known interactions) and items (users and movies) taken from the dataset
         self.targets = self.data[:, 2]
-        self.items = self.preprocess_items(self.data)
+        self.dataset = self.preprocess_dataset(self.data) # previously named items
 
-        # TODO:
-        # if add_context:
-        #     self.dataset = self.add_last_clicked_item(self.dataset)
-        # else:
-        self.dataset = self.items
+        if add_context:
+             self.dataset = self.add_last_clicked_item(self.dataset)
 
         # We get our adjacency matrix dimension (max id) and build the matrix
         self.field_dims = np.cumsum(np.max(self.dataset, axis=0) - np.min(self.dataset, axis = 0) + 1)
         self.field_mins = np.min(self.dataset, axis=0)
-        self.max_users, self.max_items = self.field_dims
-        self.train_mat = utils.build_adjacency_matrix(self.field_dims, self.field_mins, self.items.copy())
+        self.max_users, self.max_items = self.field_dims[:2]
+        self.train_mat = utils.build_adjacency_matrix(self.field_dims, self.field_mins, self.dataset.copy())
 
         # Generate train interactions with 4 negative samples for each positive
         self.negative_sampling(neg_ratio=negative_ratio_train)
 
         # We define the test set items as we did with the dataset and generate test negative samples
-        test_set_items = self.preprocess_items(self.test_data)
+        test_set_items = self.preprocess_dataset(self.test_data)
         self.test_set = utils.build_test_set(test_set_items, self.max_users, self.max_items, self.train_mat, neg_ratio=negative_ratio_test)
 
     def __len__(self):
@@ -162,7 +159,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             # Delete zipfile
             os.remove(self.downloaded_file)
 
-    def preprocess_items(self, data):
+    def preprocess_dataset(self, data):
         """
         Gives the items new indexes so that they have unique ids.
 
@@ -177,14 +174,37 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
             Preprocessed items.
         """
 
-        # Whole method is dataset-specific
-        reindexed_items = data[:, :2].astype(np.int) - 1  # IDs start by 1 and we want them to start by 0
+        # Whole method is dataset-specific. Data should be in this order: user, item, labels, context1, context2 ...
+        reindexed_items = np.delete(data, 2, axis=1).astype(np.int)  # We delete the label column but keep the rest
+        reindexed_items = reindexed_items[:, :2].astype(np.int) - 1  # IDs start by 1 and we want them to start by 0
         # We get the highest user ID and highest movie ID
-        users, items = np.max(reindexed_items, axis=0)[:2] + 1
+        users = np.max(reindexed_items, axis=0)[:1]
         # We want IDs to be unique among users and movies, so we reindex movies
-        reindexed_items[:, 1] = reindexed_items[:, 1] + users
+        reindexed_items[:, 1] = reindexed_items[:, 1] + users + 1
 
         return reindexed_items
+
+    def add_last_clicked_item(self, dataset):
+        """
+        Uses the timestamp information to add the Last Clicked Item context to the dataset.
+
+        Parameters
+        ----------
+        dataset : ndarray
+            Dataset with timestamp as last column # TODO no sería mejor como primer contexto?
+
+        Returns
+        -------
+        ndarray
+            Dataset with the Last Clicked Item context added.
+        """
+        # We sort the dataset by the timestamp. TODO duda: no tiene en cuenta el usuario o sí?
+        sorted_data = dataset[dataset[:, -1].argsort()]
+        # We add as last clicked item the item of the previous interaction. Except for the first interaction that gets a 1 TODO duda: why?
+        # We don't use the last interaction's movie since there is no following interaction.
+        sorted_data[:, -1] = np.concatenate(([1], sorted_data[:-1][:, 1]))
+
+        return sorted_data
 
     def negative_sampling(self, neg_ratio=4):
         """
@@ -202,7 +222,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         # We initialize an array where interactions will be saved
         self.interactions = []
         # We put together the item pairs with their respective targets
-        data = np.c_[(self.items, self.targets)].astype(int)
+        data = np.c_[(self.dataset, self.targets)].astype(int)
 
         for x in tqdm(data, desc="Performing negative sampling on test data..."):  # x are triplets (u, i , 1)
             # Append positive interaction
