@@ -2,13 +2,14 @@ from datetime import datetime
 from distutils.util import strtobool
 
 import torch
+from matrix_factorization import KernelMF
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.utils import from_scipy_sparse_matrix
 from scipy.sparse import identity
 
 from dataset_processors.movielens100k import MovieLens100kDataset
-from epochs import test, run
+from epochs import test, run, test_mf
 from models.fm import FactorizationMachineModel
 from utils import sparse_mx_to_torch_sparse_tensor
 
@@ -61,7 +62,14 @@ def main(args):
 
     # We define our tools for prediction: model, criterion and optimizer
     if args.model == 'mf':
-        model = 0
+        # TODO descubrir que son el resto de argumentos
+        model = KernelMF(n_epochs=args.epochs, n_factors=100, verbose=1, lr=0.001, reg=0.005)
+
+        # Train model
+        model.fit(full_dataset.data_pd[["user_id", "item_id"]], full_dataset.data_pd[["rating"]])
+
+        # Test model
+        test_mf(model, full_dataset.test_set, top_k=args.top_k)
     elif args.model == 'fm':
         if args.gcn:
             X = sparse_mx_to_torch_sparse_tensor(identity(full_dataset.train_mat.shape[0]))
@@ -74,20 +82,20 @@ def main(args):
             model = FactorizationMachineModel(full_dataset.field_dims[-1], 32, gcn=args.gcn, reduce_sum=reduce_sum,
                                               fm_operation=fm_operation).to(device)
 
-    criterion = torch.nn.BCEWithLogitsLoss(reduction='mean')
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
+        criterion = torch.nn.BCEWithLogitsLoss(reduction='mean')
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
 
-    # Check our model's performance before training
-    hr, ndcg, rmse = test(model, full_dataset.test_set, device, topk=args.top_k)
-    print("initial HR: ", hr)
-    print("initial NDCG: ", ndcg)
-    print("initial RMSE: ", rmse)
-    writer.add_scalar('initial/HR@{top_k}', hr)
-    writer.add_scalar('initial/NDCG@{top_k}', ndcg)
-    writer.add_scalar('initial/RMSE@{top_k}', rmse)
+        # Check our model's performance before training
+        hr, ndcg, rmse = test(model, full_dataset.test_set, device, topk=args.top_k)
+        print("initial HR: ", hr)
+        print("initial NDCG: ", ndcg)
+        print("initial RMSE: ", rmse)
+        writer.add_scalar('initial/HR@{top_k}', hr)
+        writer.add_scalar('initial/NDCG@{top_k}', ndcg)
+        writer.add_scalar('initial/RMSE@{top_k}', rmse)
 
-    # Training initialization.
-    run(model, optimizer, criterion, data_loader, full_dataset, writer, device, tb=args.logs, top_k=args.top_k, epochs=args.epochs)
+        # Training initialization.
+        run(model, optimizer, criterion, data_loader, full_dataset, writer, device, tb=args.logs, top_k=args.top_k, epochs=args.epochs)
 
     writer.close()
 

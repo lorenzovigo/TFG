@@ -2,6 +2,7 @@ import math
 from statistics import mean
 
 import torch
+import pandas as pd
 
 from utils import getHitRatio, getNDCG, getRMSE
 
@@ -67,6 +68,31 @@ def test(model, test_set, device, topk=10):
         NDCG.append(getNDCG(recommend_list, gt_item))
         RMSE.append(getRMSE(predictions))
     return mean(HR), mean(NDCG), math.sqrt(mean(RMSE))
+
+def test_mf(model, test_set, top_k=10):
+    HR, NDCG, RMSE = [], [], []
+
+    for user_test in test_set:
+        # For each user in the test set we get the ground truth item
+        gt_item = user_test[0][1]
+
+        # We compute the predictions using our model and retrieve our recommendations (those with best score)
+        test_pd = pd.DataFrame(data=user_test, index=[i for i in range(user_test.shape[0])], columns=["user_id", "item_id"])
+
+        predictions = torch.Tensor(model.predict(test_pd))
+        _, indices = torch.topk(predictions, top_k)
+        recommend_list = user_test[indices.cpu().detach().numpy()][:, 1]
+
+        # We compute the hit ratio and NDCG
+        HR.append(getHitRatio(recommend_list, gt_item))
+        NDCG.append(getNDCG(recommend_list, gt_item))
+        RMSE.append(getRMSE(predictions))
+
+    hr, ndcg, rmse = mean(HR), mean(NDCG), math.sqrt(mean(RMSE))
+    print(f'Matrix Factorization Library:')
+    print(f'Eval: HR@{top_k} = {hr:.4f}, NDCG@{top_k} = {ndcg:.4f}, RMSE@{top_k} = {rmse:.4f} ')
+    return hr, ndcg, rmse
+
 
 
 def run(model, optimizer, criterion, data_loader, full_dataset, writer, device, tb=True, epochs=100, top_k=10):

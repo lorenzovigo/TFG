@@ -89,6 +89,7 @@ class MovieLens100kDataset(torch.utils.data.Dataset):
         colnames = ["user_id", 'item_id', 'label', 'timestamp']
 
         # Read several data from dataset files
+        self.data_pd = pd.read_csv(f'{self.dataset_path}movielens.train.rating', names=["user_id", "item_id", "rating", "timestamp"], sep="\t", usecols=[0, 1, 2], engine="python")
         self.data = pd.read_csv(f'{self.dataset_path}movielens.train.rating', sep=sep, header=None, names=colnames).to_numpy()
         self.test_data = pd.read_csv(f'{self.dataset_path}movielens.test.rating', sep=sep, header=None, names=colnames).to_numpy()
 
