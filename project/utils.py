@@ -2,6 +2,7 @@ import numpy as np
 import math
 import torch
 import scipy.sparse as sp
+from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 
 
@@ -33,8 +34,10 @@ def getNDCG(recommend_list, gt_item):
         return 0
 
 def getRMSE(predictions):
-    # TODO wrong
-    return math.pow(predictions[0]-torch.max(predictions), 2)
+    # TODO preguntar
+    targets = np.zeros(predictions.size())
+    targets[0] = 1
+    return mean_squared_error(targets, predictions.cpu().detach().numpy(), squared=False)
 
 
 def sparse_mx_to_torch_sparse_tensor(sparse_mx):
