@@ -11,8 +11,7 @@ from IPython import embed
 
 class PointNFM(nn.Module):
     def __init__(self,
-                 user_num, 
-                 item_num, 
+                 max_dim,
                  factors, 
                  act_function, 
                  num_layers, 
@@ -33,8 +32,7 @@ class PointNFM(nn.Module):
         Point-wise NFM Recommender Class
         Parameters
         ----------
-        user_num : int, the number of users
-        item_num : int, the number of items
+        max_dim: int, number of fields (including, users, items and contexts)
         factors : int, the number of latent factor
         act_function : str, activation function for hidden layer
         num_layers : int, number of hidden layers
@@ -70,10 +68,10 @@ class PointNFM(nn.Module):
 
         if self.GCE_flag:
             print('GCE EMBEDDINGS DEFINED')
-            self.embeddings = GCE(user_num + item_num, factors, X, A)
+            self.embeddings = GCE(max_dim, factors, X, A)
         else:
-            self.embeddings = nn.Embedding(user_num + item_num, factors)
-            self.bias = nn.Embedding(user_num + item_num, 1)
+            self.embeddings = nn.Embedding(max_dim, factors)
+            self.bias = nn.Embedding(max_dim, 1)
             self.bias_ = nn.Parameter(torch.tensor([0.0]))
 
         FM_modules = []
@@ -118,9 +116,12 @@ class PointNFM(nn.Module):
         else:
             nn.init.constant_(self.prediction.weight, 1.0)
 
-    def forward(self, user, item):
+    def forward(self, user, item, context):
 
-        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        if context is None:
+            embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        else:
+            embeddings = self.embeddings(torch.stack((user, item, context), dim=1))
         fm = embeddings.prod(dim=1)  # shape [256, 32]
 
         fm = self.FM_layers(fm)
@@ -135,7 +136,7 @@ class PointNFM(nn.Module):
 
         return pred.view(-1)
 
-    def predict(self, u, i):
-        pred = self.forward(u, i).cpu()
+    def predict(self, u, i, c):
+        pred = self.forward(u, i, c).cpu()
         
         return pred

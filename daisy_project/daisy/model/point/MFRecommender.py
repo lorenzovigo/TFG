@@ -8,8 +8,7 @@ from daisy.model.GCE.gce import GCE
 
 class PointMF(nn.Module):
     def __init__(self, 
-                 user_num, 
-                 item_num, 
+                 max_dim,
                  factors=100,
                  optimizer='adam',
                  epochs=20, 
@@ -26,8 +25,7 @@ class PointMF(nn.Module):
         Point-wise MF Recommender Class
         Parameters
         ----------
-        user_num : int, the number of users
-        item_num : int, the number of items
+        max_dim: int, number of fields (including, users, items and contexts)
         factors : int, the number of latent factor
         epochs : int, number of training epochs
         lr : float, learning rate
@@ -51,22 +49,25 @@ class PointMF(nn.Module):
 
         if GCE_flag:
             print('GCE EMBEDDINGS DEFINED')
-            self.embeddings = GCE(user_num + item_num, factors, X, A)
+            self.embeddings = GCE(max_dim, factors, X, A)
         else:
-            self.embeddings = nn.Embedding(user_num + item_num, factors)
+            self.embeddings = nn.Embedding(max_dim, factors)
             nn.init.normal_(self.embeddings.weight, std=0.01)
 
         self.loss_type = loss_type
 
-    def forward(self, user, item):
+    def forward(self, user, item, context):
 
         # embed()
-        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        if context is None:
+            embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        else:
+            embeddings = self.embeddings(torch.stack((user, item, context), dim=1))
         # ix = torch.bmm(embeddings[:, :1, :], embeddings[:, 1:, :].permute(0, 2, 1))
         pred = embeddings.prod(dim=1).sum(dim=1)
         return pred
 
-    def predict(self, u, i):
-        pred = self.forward(u, i).cpu()
+    def predict(self, u, i, c):
+        pred = self.forward(u, i, c).cpu()
         
         return pred

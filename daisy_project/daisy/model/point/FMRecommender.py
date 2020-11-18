@@ -8,8 +8,7 @@ from daisy.model.GCE.gce import GCE
 
 class PointFM(nn.Module):
     def __init__(self, 
-                 user_num, 
-                 item_num, 
+                 max_dim,
                  factors=84, 
                  epochs=20,
                  optimizer='adam',
@@ -26,8 +25,7 @@ class PointFM(nn.Module):
         Point-wise FM Recommender Class
         Parameters
         ----------
-        user_num : int, the number of users
-        item_num : int, the number of items
+        max_dim : int, number of fields (including, users, items and contexts)
         factors : int, the number of latent factor
         epochs : int, number of training epochs
         lr : float, learning rate
@@ -52,10 +50,10 @@ class PointFM(nn.Module):
 
         if GCE_flag:
             print('GCE EMBEDDINGS DEFINED')
-            self.embeddings = GCE(user_num + item_num, factors, X, A)
+            self.embeddings = GCE(max_dim, factors, X, A)
         else:
-            self.embeddings = nn.Embedding(user_num + item_num, factors)
-            self.bias = nn.Embedding(user_num + item_num, 1)
+            self.embeddings = nn.Embedding(max_dim, factors)
+            self.bias = nn.Embedding(max_dim, 1)
             self.bias_ = nn.Parameter(torch.tensor([0.0]))
 
             nn.init.normal_(self.embeddings.weight, std=0.01)
@@ -63,9 +61,12 @@ class PointFM(nn.Module):
 
         self.loss_type = loss_type
 
-    def forward(self, user, item):
-
-        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+    def forward(self, user, item, context): # TODO duda: por qué lo pasamos por separado y no todo junto como en el anterior proyecto
+        # TODO duda: la parte lineal ahora es bias y bias_ y embeddings.prod "hace de fm"?
+        if context is None:
+            embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        else:
+            embeddings = self.embeddings(torch.stack((user, item, context), dim=1))
         pred = embeddings.prod(dim=1).sum(dim=1, keepdim=True)
 
         if not self.GCE_flag:
@@ -74,7 +75,7 @@ class PointFM(nn.Module):
         return pred.view(-1)
 
 
-    def predict(self, u, i):
-        pred = self.forward(u, i).cpu()
+    def predict(self, u, i, c):
+        pred = self.forward(u, i, c).cpu()
         
         return pred

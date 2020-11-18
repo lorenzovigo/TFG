@@ -29,13 +29,14 @@ def train(space, model, train_loader, device):
         # set process bar display
         pbar = tqdm(train_loader)
         pbar.set_description(f'[Epoch {epoch:03d}]')
-        for user, item, label in pbar:
+        for user, item, context, label in pbar: # TODO duda: si lo pillamos todo junto como ant proyecto será más fácil generalizar
             user = user.to(device)
             item = item.to(device)
+            context = context.to(device) if space['context'] else None
             label = label.to(device)
 
             model.zero_grad()
-            prediction = model(user, item)
+            prediction = model(user, item, context)
             loss = criterion(prediction, label)
             # TODO: IMPLEMEMNT REGULARIZATIONS
 

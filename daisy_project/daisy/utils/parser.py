@@ -6,6 +6,10 @@ from hyperopt import hp
 def parse_args(tune=False):
     parser = argparse.ArgumentParser(description='test recommender')
     # common settings
+    parser.add_argument('--context',
+                        action='store_true',
+                        default=False,
+                        help='activate context aware model')
     parser.add_argument('--gce',
                         action='store_true',
                         default=False,
@@ -135,6 +139,7 @@ def parse_args(tune=False):
 def parse_space(args, tune=False):
     if tune:
         space = {
+            'context': args.context,
             'gce': args.gce,
             'problem_type': args.problem_type,
             'algo_name': args.algo_name,
@@ -166,6 +171,7 @@ def parse_space(args, tune=False):
         }
     else:
         space = {
+            'context': args.context,
             'gce': args.gce,
             'problem_type': args.problem_type,
             'algo_name': args.algo_name,

@@ -4,7 +4,7 @@ from IPython import embed
 
 
 class Sampler(object):
-    def __init__(self, user_num, item_num, num_ng=4, sample_method='item-desc', sample_ratio=0):
+    def __init__(self, dims, num_ng=4, sample_method='item-desc', sample_ratio=0):
         """
         negative sampling class for some algorithms
         Parameters
@@ -18,8 +18,7 @@ class Sampler(object):
                         'item-ascd' ascending item popularity, low popularity means high probability to choose
         sample_ratio : float, scope [0, 1], it determines what extent the sample method except 'uniform' occupied
         """
-        self.user_num = user_num
-        self.item_num = item_num
+        self.dims = dims
         self.num_ng = num_ng
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
@@ -27,7 +26,7 @@ class Sampler(object):
         assert sample_method in ['uniform', 'item-ascd', 'item-desc'], f'Invalid sampling method: {sample_method}'
         assert 0 <= sample_ratio <= 1, 'Invalid sample ratio value'
 
-    def transform(self, sampled_df, is_training=True):
+    def transform(self, sampled_df, is_training=True, context=False):
         """
 
         Parameters
@@ -44,21 +43,31 @@ class Sampler(object):
             for _, row in sampled_df.iterrows():
                 u = int(row['user'])
                 i = int(row['item'])
+                c = int(row['context']) if context else None
                 r = row['rating']
                 js = []
-                neg_set.append([u, i, r, js])
+                neg_set.append([u, i, c, r, js]) if context else neg_set.append([u, i, r, js])
             
             return neg_set
 
         user_num, item_num = np.max(sampled_df[['user', 'item']].to_numpy(), axis=0) + 1
         # IDEA: build_adj_mx
-        pair_pos = sp.dok_matrix((item_num, item_num), dtype=np.float32)
+        dims = self.dims[:3] if context else self.dims[:2] # TODO  dims = self.dims con contexto?
+        pair_pos = sp.dok_matrix((dims[-1], dims[-1]), dtype=np.float32)
         neg_sample_pool = list(range(user_num, item_num))
 
         for _, row in sampled_df.iterrows():
             pair_pos[int(row['user']), int(row['item'])] = 1.0
             pair_pos[int(row['item']), int(row['user'])] = 1.0
+
             # TODO: EXTEND TO MULTIPLE DIMENSIONS
+            if context:
+                # for idx in range(len(row[2:]) -2):  #subtract rating and timestamp
+                pair_pos[int(row['user']), int(row['context'])] = 1.0
+                pair_pos[int(row['item']), int(row['context'])] = 1.0
+
+                pair_pos[int(row['context']), int(row['user'])] = 1.0
+                pair_pos[int(row['context']), int(row['item'])] = 1.0
 
         popularity_item_list = sampled_df['item'].value_counts().index.tolist()
         if self.sample_method == 'item-desc':
@@ -72,6 +81,7 @@ class Sampler(object):
         for _, row in sampled_df.iterrows():
             u = int(row['user'])
             i = int(row['item'])
+            c = None if not context else int(row['context'])
             r = row['rating']
 
             js = []
@@ -96,7 +106,7 @@ class Sampler(object):
                     while (u, j) in pair_pos:
                         j = np.random.randint(user_num, item_num)
                     js.append(j)
-            neg_set.append([u, i, r, js])
+            neg_set.append([u, i, c, r, js]) if context else neg_set.append([u, i, r, js])
 
         print(f'Finish negative samplings, sample number is {len(neg_set) * self.num_ng}......')
         return neg_set, pair_pos

@@ -11,7 +11,7 @@ from collections import defaultdict
 from IPython import embed
 
 
-def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, level='ui'):
+def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, level='ui'): # TODO dudas load_rate proyecto gce
     """
     Method of loading certain raw data
     Parameters
@@ -55,7 +55,18 @@ def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, l
     return df, user_num, item_num
 
 
-def get_ur(df):
+def add_last_clicked_item_context(df, user_num):
+    df['context'] = df['rating']
+    df = df[['user', 'item', 'context', 'rating', 'timestamp']]
+    data = df.to_numpy().astype(int)
+    sorted_data = data[data[:, -1].argsort()]
+    # user_num == first item number
+    sorted_data[:, 2] = np.concatenate(([user_num], sorted_data[:-1][:, 1]))
+    new_df = pd.DataFrame(data=sorted_data, columns=list(df.columns))
+    return new_df
+
+
+def get_ur(df, context=False):
     """
     Method of getting user-rating pairs
     Parameters
@@ -68,8 +79,10 @@ def get_ur(df):
     """
     ur = defaultdict(set)
     for _, row in df.iterrows():
-        ur[int(row['user'])].add(int(row['item']))
-
+        if context:
+            ur[int(row['user']), int(row['context'])].add(int(row['item']))
+        else:
+            ur[int(row['user'])].add(int(row['item']))
     return ur
 
 
