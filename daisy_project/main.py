@@ -11,7 +11,7 @@ import torch.utils.data as data
 from daisy.utils.sampler import Sampler
 from daisy.utils.parser import parse_args
 from daisy.utils.splitter import split_test
-from daisy.utils.data import PointData, PairData, UAEData, sparse_mx_to_torch_sparse_tensor
+from daisy.utils.data import PointData, PairData, sparse_mx_to_torch_sparse_tensor
 from daisy.utils.loader import load_rate, get_ur, convert_npy_mat, build_candidates_set
 from daisy.utils.metrics import precision_at_k, recall_at_k, map_at_k, hr_at_k, ndcg_at_k, mrr_at_k
 
