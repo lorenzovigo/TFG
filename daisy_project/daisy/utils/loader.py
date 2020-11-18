@@ -55,6 +55,42 @@ def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, l
     return df, user_num, item_num
 
 
+def get_ur(df):
+    """
+    Method of getting user-rating pairs
+    Parameters
+    ----------
+    df : pd.DataFrame, rating dataframe
+
+    Returns
+    -------
+    ur : dict, dictionary stored user-items interactions
+    """
+    ur = defaultdict(set)
+    for _, row in df.iterrows():
+        ur[int(row['user'])].add(int(row['item']))
+
+    return ur
+
+
+def get_ir(df):
+    """
+    Method of getting item-rating pairs
+    Parameters
+    ----------
+    df : pd.DataFrame, rating dataframe
+
+    Returns
+    -------
+    ir : dict, dictionary stored item-users interactions
+    """
+    ir = defaultdict(set)
+    for _, row in df.iterrows():
+        ir[int(row['item'])].add(int(row['user']))
+
+    return ir
+
+
 def build_feat_idx_dict(df:pd.DataFrame, 
                         cat_cols:list=['user', 'item'], 
                         num_cols:list=[]):

@@ -5,30 +5,30 @@ import torch.backends.cudnn as cudnn
 from tqdm import tqdm
 
 
-def train(args, model, train_loader, device):
+def train(space, model, train_loader, device):
     model.to(device)
 
-    if args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    if space['optimizer'] == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=space['lr'])
 
-    elif args.optimizer == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr)
+    elif space['optimizer'] == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=space['lr'])
     else:
-        raise ValueError(f'Invalid OPTIMIZER : {args.loss_type}')
+        raise ValueError(f"Invalid OPTIMIZER : {space['loss_type']}")
 
-    if args.loss_type == 'CL':
+    if space['loss_type'] == 'CL':
         criterion = nn.BCEWithLogitsLoss(reduction='sum')
-    elif args.loss_type == 'SL':
+    elif space['loss_type'] == 'SL':
         criterion = nn.MSELoss(reduction='sum')
     else:
-        raise ValueError(f'Invalid loss type: {args.loss_type}')
+        raise ValueError(f"Invalid loss type: {space['loss_type']}")
 
     last_loss = 0.
     early_stopping_counter = 0
     stop = False
 
     model.train()
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, space['epochs'] + 1):
         if stop:
             break
         current_loss = 0.

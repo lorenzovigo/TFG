@@ -2,8 +2,8 @@ import os
 import time
 import numpy as np
 import pandas as pd
+from hyperopt import STATUS_OK, Trials, fmin, tpe
 from tqdm import tqdm
-from collections import defaultdict
 
 import torch
 import torch.utils.data as data
@@ -19,11 +19,9 @@ from torch_geometric.utils import from_scipy_sparse_matrix
 from scipy.sparse import identity
 from IPython import embed
 
+from daisy.utils.parser import parse_space
 
-if __name__ == '__main__':
-    ''' all parameter part '''
-    args = parse_args()
-
+def main(space):
     # FIX SEED AND SELECT DEVICE
     seed = 1234
     if torch.cuda.is_available():
@@ -40,11 +38,11 @@ if __name__ == '__main__':
     time_log = open('time_log.txt', 'a') 
     
     ''' Test Process for Metrics Exporting '''
-    df, user_num, item_num = load_rate(args.dataset, args.prepro, binary=False)
-    if args.reindex:
+    df, user_num, item_num = load_rate(space['dataset'], space['prepro'], binary=False)
+    if space['reindex']:
         df['item'] = df['item'] + user_num
 
-    train_set, test_set = split_test(df, args.test_method, args.test_size)
+    train_set, test_set = split_test(df, space['test_method'], space['test_size'])
     # temporary used for tuning test result
     # train_set = pd.read_csv(f'./experiment_data/train_{args.dataset}_{args.prepro}_{args.test_method}.dat')
     # test_set = pd.read_csv(f'./experiment_data/test_{args.dataset}_{args.prepro}_{args.test_method}.dat')
@@ -60,22 +58,22 @@ if __name__ == '__main__':
     test_ur = get_ur(test_set)
     total_train_ur = get_ur(train_set)
     # initial candidate item pool
-    item_pool = set(range(user_num, item_num+user_num)) if args.reindex else set(range(item_num))
-    candidates_num = args.cand_num
+    item_pool = set(range(user_num, item_num+user_num)) if space['reindex'] else set(range(item_num))
+    candidates_num = space['cand_num']
 
     print('='*50, '\n')
     # retrain model by the whole train set
     # format training data
-    sampler = Sampler( # TODO duda: que hacer con esto
+    sampler = Sampler(
         user_num, 
         item_num, 
-        num_ng=args.num_ng, 
-        sample_method=args.sample_method, 
-        sample_ratio=args.sample_ratio,
-        reindex=args.reindex
+        num_ng=space['num_ng'],
+        sample_method=space['sample_method'],
+        sample_ratio=space['sample_ratio'],
+        reindex=space['reindex']
     )
     neg_set, adj_mx = sampler.transform(train_set, is_training=True)
-    if args.gce:
+    if space['gce']:
         X = sparse_mx_to_torch_sparse_tensor(identity(adj_mx.shape[0])).to(device)
         # We retrieve the graph's edges and send both them and graph to device in the next two lines
         edge_idx, edge_attr = from_scipy_sparse_matrix(adj_mx)
@@ -83,64 +81,64 @@ if __name__ == '__main__':
 
     train_dataset = PointData(neg_set, is_training=True)
 
-    if args.problem_type == 'point':
-        if args.algo_name == 'mf':
+    if space['problem_type'] == 'point':
+        if space['algo_name'] == 'mf':
             from daisy.model.point.MFRecommender import PointMF
             model = PointMF(
                 user_num, 
                 item_num, 
-                factors=args.factors,
-                epochs=args.epochs,
-                optimizer=args.optimizer,
-                lr=args.lr,
-                reg_1=args.reg_1,
-                reg_2=args.reg_2,
-                loss_type=args.loss_type,
-                reindex=args.reindex,
-                X=X if args.gce else None,
-                GCE_flag=args.gce,
-                A=edge_idx if args.gce else None,
-                gpuid=args.gpu
+                factors=space['factors'],
+                epochs=space['epochs'],
+                optimizer=space['optimizer'],
+                lr=space['lr'],
+                reg_1=space['reg_1'],
+                reg_2=space['reg_2'],
+                loss_type=space['loss_type'],
+                reindex=space['reindex'],
+                X=X if space['gce'] else None,
+                GCE_flag=space['gce'],
+                A=edge_idx if space['gce'] else None,
+                gpuid=space['gpu']
             )
-        elif args.algo_name == 'fm':
+        elif space['algo_name'] == 'fm':
             from daisy.model.point.FMRecommender import PointFM
             model = PointFM(
                 user_num, 
                 item_num,
-                factors=args.factors,
-                optimizer=args.optimizer,
-                epochs=args.epochs,
-                lr=args.lr,
-                reg_1=args.reg_1,
-                reg_2=args.reg_2,
-                loss_type=args.loss_type,
-                GCE_flag=args.gce,
-                reindex=args.reindex,
-                X=X if args.gce else None,
-                A=edge_idx if args.gce else None,
-                gpuid=args.gpu
+                factors=space['factors'],
+                optimizer=space['optimizer'],
+                epochs=space['epochs'],
+                lr=space['lr'],
+                reg_1=space['reg_1'],
+                reg_2=space['reg_2'],
+                loss_type=space['loss_type'],
+                GCE_flag=space['gce'],
+                reindex=space['reindex'],
+                X=X if space['gce'] else None,
+                A=edge_idx if space['gce'] else None,
+                gpuid=space['gpu']
             )
-        elif args.algo_name == 'nfm':
+        elif space['algo_name'] == 'nfm':
             from daisy.model.point.NFMRecommender import PointNFM
             model = PointNFM(
                 user_num,
                 item_num,
-                factors=args.factors,
-                optimizer=args.optimizer,
-                act_function=args.act_func,
-                num_layers=args.num_layers,
-                batch_norm=args.no_batch_norm,
-                q=args.dropout,
-                epochs=args.epochs,
-                lr=args.lr,
-                reg_1=args.reg_1,
-                reg_2=args.reg_2,
-                loss_type=args.loss_type,
-                GCE_flag=args.gce,
-                reindex=args.reindex,
-                X=X if args.gce else None,
-                A=edge_idx if args.gce else None,
-                gpuid=args.gpu
+                factors=space['factors'],
+                optimizer=space['optimizer'],
+                act_function=space['act_func'],
+                num_layers=space['num_layers'],
+                batch_norm=space['no_batch_norm'],
+                q=space['dropout'],
+                epochs=space['epochs'],
+                lr=space['lr'],
+                reg_1=space['reg_1'],
+                reg_2=space['reg_2'],
+                loss_type=space['loss_type'],
+                GCE_flag=space['gce'],
+                reindex=space['reindex'],
+                X=X if space['gce'] else None,
+                A=edge_idx if space['gce'] else None,
+                gpuid=space['gpu']
             )
         else:
             raise ValueError('Invalid algorithm name')
@@ -152,17 +150,17 @@ if __name__ == '__main__':
     #     args.num_workers = 0
     train_loader = data.DataLoader(
         train_dataset,
-        batch_size=args.batch_size,
+        batch_size=space['batch_size'],
         shuffle=True,
-        num_workers=args.num_workers
+        num_workers=space['num_workers']
     )
 
     # build recommender model
     s_time = time.time()
     # TODO: refactor train
-    if args.problem_type == 'point':
+    if space['problem_type'] == 'point':
         from daisy.model.point.train import train
-        train(args, model, train_loader, device)
+        train(space, model, train_loader, device)
     else:
         raise ValueError()
     # model.fit(train_loader)
@@ -171,8 +169,8 @@ if __name__ == '__main__':
     hours, rem = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(rem, 60)
 
-    time_log.write(f'{args.dataset}_{args.prepro}_{args.test_method}_{args.problem_type}{args.algo_name}'
-                   f'_{args.loss_type}_{args.sample_method}_GCE={args.gce},  {minutes:.2f} min, {seconds:.4f}seconds' + '\n')
+    time_log.write(f"{space['dataset']}_{space['prepro']}_{space['test_method']}_{space['problem_type']}{space['algo_name']}"
+                   f"_{space['loss_type']}_{space['sample_method']}_GCE={space['gce']},  {minutes:.2f} min, {seconds:.4f}seconds" + '\n')
     time_log.close()
 
     print('Start Calculating Metrics......')
@@ -206,7 +204,7 @@ if __name__ == '__main__':
             item_i = item_i.to(device)
 
             prediction = model.predict(user_u, item_i)
-            _, indices = torch.topk(prediction, args.topk)
+            _, indices = torch.topk(prediction, space['topk'])
             top_n = torch.take(torch.tensor(test_ucands[u]), indices).cpu().numpy()
 
         preds[u] = top_n
@@ -217,13 +215,13 @@ if __name__ == '__main__':
 
     # process topN list and store result for reporting KPI
     print('Save metric@k result to res folder...')
-    result_save_path = f'./res/{args.dataset}/{args.prepro}/{args.test_method}/'
+    result_save_path = f"./res/{space['dataset']}/{space['prepro']}/{space['test_method']}/"
     if not os.path.exists(result_save_path):
         os.makedirs(result_save_path)
 
     res = pd.DataFrame({'metric@K': ['pre', 'rec', 'hr', 'map', 'mrr', 'ndcg']})
     for k in [1, 5, 10, 20, 30, 50]:
-        if k > args.topk:
+        if k > space['topk']:
             continue
         tmp_preds = preds.copy()        
         tmp_preds = {key: rank_list[:k] for key, rank_list in tmp_preds.items()}
@@ -245,11 +243,11 @@ if __name__ == '__main__':
 
         res[k] = np.array([pre_k, rec_k, hr_k, map_k, mrr_k, ndcg_k])
 
-    common_prefix = f'with_{args.sample_ratio}{args.sample_method}'
-    algo_prefix = f'{args.loss_type}_{args.problem_type}_{args.algo_name}'
+    common_prefix = f"with_{space['sample_ratio']}{space['sample_method']}"
+    algo_prefix = f"{space['loss_type']}_{space['problem_type']}_{space['algo_name']}"
 
     res.to_csv(
-        f'{result_save_path}{algo_prefix}_{common_prefix}_GCE={args.gce}_kpi_results.csv',
+        f"{result_save_path}{algo_prefix}_{common_prefix}_GCE={space['gce']}_kpi_results.csv",
         index=False
     )
 
@@ -262,3 +260,24 @@ if __name__ == '__main__':
     minutes, seconds = divmod(rem, 60)
 
     print(f'TOTAL ELAPSED TIME: {minutes:.2f} min, {seconds:.4f}seconds')
+
+    # if space['tune']:
+    #    return {'loss': 0, 'status': STATUS_OK}
+    return 0
+
+if __name__ == '__main__':
+    ''' all parameter part '''
+    args = parse_args()
+    space = parse_space(args, tune=args.tune)
+
+    if not space['tune']:
+        main(space)
+    else:
+        trials = Trials()
+
+        best = fmin(fn=main,
+                    space=space, algo=tpe.suggest,
+                    max_evals=1000,
+                    trials=trials)
+
+        print(best)
