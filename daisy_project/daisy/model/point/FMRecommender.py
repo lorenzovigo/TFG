@@ -18,7 +18,6 @@ class PointFM(nn.Module):
                  reg_2=0.001,
                  loss_type='SL',
                  gpuid='0',
-                 reindex=False,
                  X=None,
                  A=None,
                  GCE_flag=False,
@@ -49,55 +48,31 @@ class PointFM(nn.Module):
         self.reg_1 = reg_1
         self.reg_2 = reg_2
 
-        self.reindex = reindex
         self.GCE_flag = GCE_flag
 
-        if reindex:
-            if GCE_flag:
-                print('GCE EMBEDDINGS DEFINED')
-                self.embeddings = GCE(user_num + item_num, factors, X, A)
-            else:
-                self.embeddings = nn.Embedding(user_num + item_num, factors)
-                self.bias = nn.Embedding(user_num + item_num, 1)
-                self.bias_ = nn.Parameter(torch.tensor([0.0]))
-
-                nn.init.normal_(self.embeddings.weight, std=0.01)
-                nn.init.constant_(self.bias.weight, 0.0)
+        if GCE_flag:
+            print('GCE EMBEDDINGS DEFINED')
+            self.embeddings = GCE(user_num + item_num, factors, X, A)
         else:
-            self.embed_user = nn.Embedding(user_num, factors)
-            self.embed_item = nn.Embedding(item_num, factors)
-
-            self.u_bias = nn.Embedding(user_num, 1)
-            self.i_bias = nn.Embedding(item_num, 1)
-
+            self.embeddings = nn.Embedding(user_num + item_num, factors)
+            self.bias = nn.Embedding(user_num + item_num, 1)
             self.bias_ = nn.Parameter(torch.tensor([0.0]))
 
-            # init weight
-            nn.init.normal_(self.embed_user.weight, std=0.01)
-            nn.init.normal_(self.embed_item.weight, std=0.01)
-            nn.init.constant_(self.u_bias.weight, 0.0)
-            nn.init.constant_(self.i_bias.weight, 0.0)
+            nn.init.normal_(self.embeddings.weight, std=0.01)
+            nn.init.constant_(self.bias.weight, 0.0)
 
         self.loss_type = loss_type
 
     def forward(self, user, item):
 
-        if self.reindex:
-            embeddings = self.embeddings(torch.stack((user, item), dim=1))
-            pred = embeddings.prod(dim=1).sum(dim=1, keepdim=True)
+        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        pred = embeddings.prod(dim=1).sum(dim=1, keepdim=True)
 
-            if not self.GCE_flag:
-                pred += self.bias(torch.stack((user, item), dim=1)).sum() + self.bias_
-            # return torch.squeeze(ix)
-            return pred.view(-1)
-        else:
-            embed_user = self.embed_user(user)
-            embed_item = self.embed_item(item)
+        if not self.GCE_flag:
+            pred += self.bias(torch.stack((user, item), dim=1)).sum() + self.bias_
+        # return torch.squeeze(ix)
+        return pred.view(-1)
 
-            pred = (embed_user * embed_item).sum(dim=-1, keepdim=True)
-            pred += self.u_bias(user) + self.i_bias(item) + self.bias_
-
-            return pred.view(-1)
 
     def predict(self, u, i):
         pred = self.forward(u, i).cpu()

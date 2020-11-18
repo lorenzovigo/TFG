@@ -20,7 +20,6 @@ class PointMF(nn.Module):
                  gpuid='0',
                  X = None,
                  A = None,
-                 reindex=False,
                  GCE_flag=False,
                  early_stop=True):
         """
@@ -48,38 +47,24 @@ class PointMF(nn.Module):
         self.reg_2 = reg_2
         self.epochs = epochs
         self.optimizer = optimizer
-        self.reindex = reindex
         self.GCE_flag = GCE_flag
 
         if GCE_flag:
             print('GCE EMBEDDINGS DEFINED')
-            self.embeddings = GCE(user_num + item_num, factors, X, A) if reindex else ValueError(f'Can not use GCE with'
-                                                                                                 f'reindex=False')
+            self.embeddings = GCE(user_num + item_num, factors, X, A)
         else:
-            if reindex:
-                self.embeddings = nn.Embedding(user_num + item_num, factors)
-                nn.init.normal_(self.embeddings.weight, std=0.01)
-            else:
-                self.embed_user = nn.Embedding(user_num, factors)
-                self.embed_item = nn.Embedding(item_num, factors)
-                nn.init.normal_(self.embed_user.weight, std=0.01)
-                nn.init.normal_(self.embed_item.weight, std=0.01)
+            self.embeddings = nn.Embedding(user_num + item_num, factors)
+            nn.init.normal_(self.embeddings.weight, std=0.01)
 
         self.loss_type = loss_type
 
     def forward(self, user, item):
 
-        if self.reindex:
-            # embed()
-            embeddings = self.embeddings(torch.stack((user, item), dim=1))
-            # ix = torch.bmm(embeddings[:, :1, :], embeddings[:, 1:, :].permute(0, 2, 1))
-            pred = embeddings.prod(dim=1).sum(dim=1)
-            return pred
-        else:
-            embed_user = self.embed_user(user)
-            embed_item = self.embed_item(item)
-            pred = (embed_user * embed_item).sum(dim=-1)
-            return pred
+        # embed()
+        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        # ix = torch.bmm(embeddings[:, :1, :], embeddings[:, 1:, :].permute(0, 2, 1))
+        pred = embeddings.prod(dim=1).sum(dim=1)
+        return pred
 
     def predict(self, u, i):
         pred = self.forward(u, i).cpu()

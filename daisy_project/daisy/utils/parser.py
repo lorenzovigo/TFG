@@ -6,10 +6,6 @@ from hyperopt import hp
 def parse_args(tune=False):
     parser = argparse.ArgumentParser(description='test recommender')
     # common settings
-    parser.add_argument('--reindex',
-                        action='store_false',
-                        default=True,
-                        help='activate if do not want to reindex items')
     parser.add_argument('--gce',
                         action='store_true',
                         default=False,
@@ -34,14 +30,6 @@ def parse_args(tune=False):
                         type=int, 
                         default=10,
                         help='top number of recommend list')
-    parser.add_argument('--test_method', 
-                        type=str, 
-                        default='tloo',
-                        help='method for split test,options: ufo/loo/fo(split by ratio)/tfo/tloo')
-    parser.add_argument('--val_method', 
-                        type=str, 
-                        default='tloo',
-                        help='validation method, options: cv, tfo, loo, tloo')
     parser.add_argument('--test_size', 
                         type=float, 
                         default=0.2,
@@ -49,10 +37,6 @@ def parse_args(tune=False):
     parser.add_argument('--val_size', 
                         type=float, 
                         default=0.1, help='split ratio for validation set')
-    parser.add_argument('--fold_num', 
-                        type=int, 
-                        default=5, 
-                        help='No. of folds for cross-validation')
     parser.add_argument('--cand_num', 
                         type=int, 
                         default=99,
@@ -81,10 +65,6 @@ def parse_args(tune=False):
                         type=str, 
                         default='CL',
                         help='loss function type: BPR/CL')
-    parser.add_argument('--optimizer',
-                        type=str,
-                        default='adam',
-                        help='type of optimizer: SGD /adam')
     # algo settings
     parser.add_argument('--reg_1', 
                         type=float, 
@@ -155,18 +135,14 @@ def parse_args(tune=False):
 def parse_space(args, tune=False):
     if tune:
         space = {
-            'reindex': args.reindex,
             'gce': args.gce,
             'problem_type': args.problem_type,
             'algo_name': args.algo_name,
             'dataset': args.dataset,
             'prepro': args.prepro,
             'topk': args.topk,
-            'test_method': args.test_method,
-            'val_method': args.val_method,
             'test_size': args.test_size,
             'val_size': args.val_size,
-            'fold_num': args.fold_num,
             'cand_num': args.cand_num,
             'sample_method': args.sample_method,
             'sample_ratio': args.sample_ratio,
@@ -174,7 +150,6 @@ def parse_space(args, tune=False):
             'gpu': args.gpu,
             'num_ng': args.num_ng,
             'loss_type': args.loss_type,
-            'optimizer': args.optimizer,
             'reg_1': args.reg_1,
             'reg_2': args.reg_2,
             'dropout': args.dropout,
@@ -191,18 +166,14 @@ def parse_space(args, tune=False):
         }
     else:
         space = {
-            'reindex': args.reindex,
             'gce': args.gce,
             'problem_type': args.problem_type,
             'algo_name': args.algo_name,
             'dataset': args.dataset,
             'prepro': args.prepro,
             'topk': args.topk,
-            'test_method': args.test_method,
-            'val_method': args.val_method,
             'test_size': args.test_size,
             'val_size': args.val_size,
-            'fold_num': args.fold_num,
             'cand_num': args.cand_num,
             'sample_method': args.sample_method,
             'sample_ratio': args.sample_ratio,
@@ -210,7 +181,6 @@ def parse_space(args, tune=False):
             'gpu': args.gpu,
             'num_ng': args.num_ng,
             'loss_type': args.loss_type,
-            'optimizer': args.optimizer,
             'reg_1': args.reg_1,
             'reg_2': args.reg_2,
             'dropout': args.dropout,

@@ -39,13 +39,12 @@ def main(space):
     
     ''' Test Process for Metrics Exporting '''
     df, user_num, item_num = load_rate(space['dataset'], space['prepro'], binary=False)
-    if space['reindex']:
-        df['item'] = df['item'] + user_num
+    df['item'] = df['item'] + user_num
 
-    train_set, test_set = split_test(df, space['test_method'], space['test_size'])
+    train_set, test_set = split_test(df, space['test_size'])
     # temporary used for tuning test result
-    # train_set = pd.read_csv(f'./experiment_data/train_{args.dataset}_{args.prepro}_{args.test_method}.dat')
-    # test_set = pd.read_csv(f'./experiment_data/test_{args.dataset}_{args.prepro}_{args.test_method}.dat')
+    # train_set = pd.read_csv(f'./experiment_data/train_{args.dataset}_{args.prepro}.dat')
+    # test_set = pd.read_csv(f'./experiment_data/test_{args.dataset}_{args.prepro}.dat')
 
     df = pd.concat([train_set, test_set], ignore_index=True)
     user_num = df['user'].nunique()
@@ -58,7 +57,7 @@ def main(space):
     test_ur = get_ur(test_set)
     total_train_ur = get_ur(train_set)
     # initial candidate item pool
-    item_pool = set(range(user_num, item_num+user_num)) if space['reindex'] else set(range(item_num))
+    item_pool = set(range(user_num, item_num+user_num))
     candidates_num = space['cand_num']
 
     print('='*50, '\n')
@@ -70,7 +69,6 @@ def main(space):
         num_ng=space['num_ng'],
         sample_method=space['sample_method'],
         sample_ratio=space['sample_ratio'],
-        reindex=space['reindex']
     )
     neg_set, adj_mx = sampler.transform(train_set, is_training=True)
     if space['gce']:
@@ -89,12 +87,10 @@ def main(space):
                 item_num, 
                 factors=space['factors'],
                 epochs=space['epochs'],
-                optimizer=space['optimizer'],
                 lr=space['lr'],
                 reg_1=space['reg_1'],
                 reg_2=space['reg_2'],
                 loss_type=space['loss_type'],
-                reindex=space['reindex'],
                 X=X if space['gce'] else None,
                 GCE_flag=space['gce'],
                 A=edge_idx if space['gce'] else None,
@@ -106,14 +102,12 @@ def main(space):
                 user_num, 
                 item_num,
                 factors=space['factors'],
-                optimizer=space['optimizer'],
                 epochs=space['epochs'],
                 lr=space['lr'],
                 reg_1=space['reg_1'],
                 reg_2=space['reg_2'],
                 loss_type=space['loss_type'],
                 GCE_flag=space['gce'],
-                reindex=space['reindex'],
                 X=X if space['gce'] else None,
                 A=edge_idx if space['gce'] else None,
                 gpuid=space['gpu']
@@ -124,7 +118,6 @@ def main(space):
                 user_num,
                 item_num,
                 factors=space['factors'],
-                optimizer=space['optimizer'],
                 act_function=space['act_func'],
                 num_layers=space['num_layers'],
                 batch_norm=space['no_batch_norm'],
@@ -135,7 +128,6 @@ def main(space):
                 reg_2=space['reg_2'],
                 loss_type=space['loss_type'],
                 GCE_flag=space['gce'],
-                reindex=space['reindex'],
                 X=X if space['gce'] else None,
                 A=edge_idx if space['gce'] else None,
                 gpuid=space['gpu']
@@ -169,7 +161,7 @@ def main(space):
     hours, rem = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(rem, 60)
 
-    time_log.write(f"{space['dataset']}_{space['prepro']}_{space['test_method']}_{space['problem_type']}{space['algo_name']}"
+    time_log.write(f"{space['dataset']}_{space['prepro']}_tloo_{space['problem_type']}{space['algo_name']}"
                    f"_{space['loss_type']}_{space['sample_method']}_GCE={space['gce']},  {minutes:.2f} min, {seconds:.4f}seconds" + '\n')
     time_log.close()
 
@@ -215,7 +207,7 @@ def main(space):
 
     # process topN list and store result for reporting KPI
     print('Save metric@k result to res folder...')
-    result_save_path = f"./res/{space['dataset']}/{space['prepro']}/{space['test_method']}/"
+    result_save_path = f"./res/{space['dataset']}/{space['prepro']}/tloo/"
     if not os.path.exists(result_save_path):
         os.makedirs(result_save_path)
 

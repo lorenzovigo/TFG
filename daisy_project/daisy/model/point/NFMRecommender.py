@@ -25,7 +25,6 @@ class PointNFM(nn.Module):
                  reg_2=0., 
                  loss_type='CL', 
                  gpuid='0',
-                 reindex=False,
                  GCE_flag=False,
                  early_stop=True,
                  X=None,
@@ -64,28 +63,17 @@ class PointNFM(nn.Module):
         self.epochs = epochs
         self.loss_type = loss_type
         self.early_stop = early_stop
-        self.reindex = reindex
         self.GCE_flag = GCE_flag
 
         os.environ['CUDA_VISIBLE_DEVICES'] = gpuid
         cudnn.benchmark = True
 
-        if reindex:
-            if self.GCE_flag:
-                print('GCE EMBEDDINGS DEFINED')
-                self.embeddings = GCE(user_num + item_num, factors, X, A)
-            else:
-                self.embeddings = nn.Embedding(user_num + item_num, factors)
-                self.bias = nn.Embedding(user_num + item_num, 1)
-                self.bias_ = nn.Parameter(torch.tensor([0.0]))
-
+        if self.GCE_flag:
+            print('GCE EMBEDDINGS DEFINED')
+            self.embeddings = GCE(user_num + item_num, factors, X, A)
         else:
-            self.embed_user = nn.Embedding(user_num, factors)
-            self.embed_item = nn.Embedding(item_num, factors)
-
-            self.u_bias = nn.Embedding(user_num, 1)
-            self.i_bias = nn.Embedding(item_num, 1)
-
+            self.embeddings = nn.Embedding(user_num + item_num, factors)
+            self.bias = nn.Embedding(user_num + item_num, 1)
             self.bias_ = nn.Parameter(torch.tensor([0.0]))
 
         FM_modules = []
@@ -117,14 +105,9 @@ class PointNFM(nn.Module):
         self._init_weight()
 
     def _init_weight(self):
-        if self.reindex and not self.GCE_flag:
+        if not self.GCE_flag:
             nn.init.normal_(self.embeddings.weight, std=0.01)
             nn.init.constant_(self.bias.weight, 0.0)
-        elif not self.reindex:
-            nn.init.normal_(self.embed_item.weight, std=0.01)
-            nn.init.normal_(self.embed_user.weight, std=0.01)
-            nn.init.constant_(self.u_bias.weight, 0.0)
-            nn.init.constant_(self.i_bias.weight, 0.0)
 
         # for deep layers
         if self.num_layers > 0:  # len(self.layers)
@@ -137,24 +120,16 @@ class PointNFM(nn.Module):
 
     def forward(self, user, item):
 
-        if self.reindex:
-            embeddings = self.embeddings(torch.stack((user, item), dim=1))
-            fm = embeddings.prod(dim=1)  # shape [256, 32]
-        else:
-            embed_user = self.embed_user(user)
-            embed_item = self.embed_item(item)
-            fm = embed_user * embed_item
+        embeddings = self.embeddings(torch.stack((user, item), dim=1))
+        fm = embeddings.prod(dim=1)  # shape [256, 32]
 
         fm = self.FM_layers(fm)
 
         if self.num_layers:
             fm = self.deep_layers(fm)
 
-        if self.reindex and not self.GCE_flag:
+        if not self.GCE_flag:
             fm += self.bias_
-
-        elif not self.GCE_flag:
-            fm += self.u_bias(user) + self.i_bias(item) + self.bias_
 
         pred = self.prediction(fm)
 

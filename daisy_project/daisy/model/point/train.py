@@ -8,13 +8,7 @@ from tqdm import tqdm
 def train(space, model, train_loader, device):
     model.to(device)
 
-    if space['optimizer'] == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=space['lr'])
-
-    elif space['optimizer'] == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=space['lr'])
-    else:
-        raise ValueError(f"Invalid OPTIMIZER : {space['loss_type']}")
+    optimizer = optim.Adam(model.parameters(), lr=space['lr'])
 
     if space['loss_type'] == 'CL':
         criterion = nn.BCEWithLogitsLoss(reduction='sum')
@@ -43,12 +37,7 @@ def train(space, model, train_loader, device):
             model.zero_grad()
             prediction = model(user, item)
             loss = criterion(prediction, label)
-            # if args.reindex:
-            #     # TODO: IMPLEMEMNT REGULARIZATIONS
-            #     pass
-            # else:
-            #     loss += model.reg_1 * (model.embed_item.weight.norm(p=1) + model.embed_user.weight.norm(p=1))
-            #     loss += model.reg_2 * (model.embed_item.weight.norm() + model.embed_user.weight.norm())
+            # TODO: IMPLEMEMNT REGULARIZATIONS
 
             if torch.isnan(loss):
                 raise ValueError(f'Loss=Nan or Infinity: current settings does not fit the recommender')

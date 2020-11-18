@@ -4,7 +4,7 @@ from IPython import embed
 
 
 class Sampler(object):
-    def __init__(self, user_num, item_num, num_ng=4, sample_method='item-desc', sample_ratio=0, reindex=False):
+    def __init__(self, user_num, item_num, num_ng=4, sample_method='item-desc', sample_ratio=0):
         """
         negative sampling class for some algorithms
         Parameters
@@ -23,7 +23,6 @@ class Sampler(object):
         self.num_ng = num_ng
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
-        self.reindex = reindex
 
         assert sample_method in ['uniform', 'item-ascd', 'item-desc'], f'Invalid sampling method: {sample_method}'
         assert 0 <= sample_ratio <= 1, 'Invalid sample ratio value'
@@ -53,19 +52,13 @@ class Sampler(object):
 
         user_num, item_num = np.max(sampled_df[['user', 'item']].to_numpy(), axis=0) + 1
         # IDEA: build_adj_mx
-        if self.reindex:
-            pair_pos = sp.dok_matrix((item_num, item_num), dtype=np.float32)
-            neg_sample_pool = list(range(user_num, item_num))
-
-        else:
-            pair_pos = sp.dok_matrix((user_num, item_num), dtype=np.float32)
-            neg_sample_pool = list(range(item_num))
+        pair_pos = sp.dok_matrix((item_num, item_num), dtype=np.float32)
+        neg_sample_pool = list(range(user_num, item_num))
 
         for _, row in sampled_df.iterrows():
             pair_pos[int(row['user']), int(row['item'])] = 1.0
-            if self.reindex:
-                pair_pos[int(row['item']), int(row['user'])] = 1.0
-                # TODO: EXTEND TO MULTIPLE DIMENSIONS
+            pair_pos[int(row['item']), int(row['user'])] = 1.0
+            # TODO: EXTEND TO MULTIPLE DIMENSIONS
 
         popularity_item_list = sampled_df['item'].value_counts().index.tolist()
         if self.sample_method == 'item-desc':
@@ -83,9 +76,9 @@ class Sampler(object):
 
             js = []
             for _ in range(uni_num):
-                j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                j = np.random.randint(user_num, item_num)
                 while (u, j) in pair_pos:
-                    j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                    j = np.random.randint(user_num, item_num)
                 js.append(j)
             for _ in range(ex_num):
                 if self.sample_method in ['item-desc', 'item-ascd']:
@@ -98,10 +91,10 @@ class Sampler(object):
                 else:
                     # maybe add other sample methods in future, uniform as default
                     # j = np.random.randint(item_num)
-                    j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                    j = np.random.randint(user_num, item_num)
 
                     while (u, j) in pair_pos:
-                        j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                        j = np.random.randint(user_num, item_num)
                     js.append(j)
             neg_set.append([u, i, r, js])
 
