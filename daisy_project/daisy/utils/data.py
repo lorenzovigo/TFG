@@ -21,7 +21,7 @@ class PointData(data.Dataset):
         self.labels_fill = []
         self.context = context
         if context:
-            for u, i, c, r, js in neg_set: # TODO duda generalizable??
+            for u, i, c, r, js in neg_set:
                 self.features_fill.append([int(u), int(i), int(c)])
                 self.labels_fill.append(r)
 

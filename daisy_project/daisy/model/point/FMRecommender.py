@@ -61,8 +61,7 @@ class PointFM(nn.Module):
 
         self.loss_type = loss_type
 
-    def forward(self, user, item, context): # TODO duda: por qué lo pasamos por separado y no todo junto como en el anterior proyecto
-        # TODO duda: la parte lineal ahora es bias y bias_ y embeddings.prod "hace de fm"?
+    def forward(self, user, item, context):
         if context is None:
             embeddings = self.embeddings(torch.stack((user, item), dim=1))
         else:

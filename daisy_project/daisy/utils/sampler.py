@@ -52,7 +52,7 @@ class Sampler(object):
 
         user_num, item_num = np.max(sampled_df[['user', 'item']].to_numpy(), axis=0) + 1
         # IDEA: build_adj_mx
-        dims = self.dims[:3] if context else self.dims[:2] # TODO  dims = self.dims con contexto?
+        dims = self.dims[:3] if context else self.dims[:2]
         pair_pos = sp.dok_matrix((dims[-1], dims[-1]), dtype=np.float32)
         neg_sample_pool = list(range(user_num, item_num))
 

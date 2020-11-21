@@ -9,7 +9,7 @@ import torch
 import torch.utils.data as data
 
 from daisy.utils.sampler import Sampler
-from daisy.utils.parser import parse_args
+from daisy.utils.parser import parse_args, parse_space
 from daisy.utils.splitter import split_test
 from daisy.utils.data import PointData, PairData, sparse_mx_to_torch_sparse_tensor
 from daisy.utils.loader import load_rate, get_ur, convert_npy_mat, build_candidates_set, add_last_clicked_item_context
@@ -19,7 +19,6 @@ from torch_geometric.utils import from_scipy_sparse_matrix
 from scipy.sparse import identity
 from IPython import embed
 
-from daisy.utils.parser import parse_space
 
 def main(space):
     # FIX SEED AND SELECT DEVICE
@@ -42,7 +41,7 @@ def main(space):
     df['item'] = df['item'] + user_num
     if space['context']:
         df = add_last_clicked_item_context(df, user_num)
-        df['context'] = df['context'] + item_num # TODO duda why. Hay un todo en el proyecto original con la idea de reindex the context??
+        df['context'] = df['context'] + item_num
 
     train_set, test_set = split_test(df, space['test_size'])
     # temporary used for tuning test result
@@ -53,8 +52,8 @@ def main(space):
     dims = np.max(df.to_numpy().astype(int), axis=0)+1
 
     # get ground truth
-    test_ur = get_ur(test_set, context=space['context'])
-    total_train_ur = get_ur(train_set, context=space['context'])
+    test_ur = get_ur(test_set, context=space['context'], eval=False)
+    total_train_ur = get_ur(train_set, context=space['context'], eval=True)
     # initial candidate item pool
     item_pool = set(range(dims[0], dims[1]))
     candidates_num = space['cand_num']
@@ -78,7 +77,7 @@ def main(space):
     train_dataset = PointData(neg_set, is_training=True, context=space['context'])
 
     if space['problem_type'] == 'point':
-        max_dim = dims[2] if args.context else dims[1] # TODO duda generalizable
+        max_dim = dims[2] if args.context else dims[1]
         if space['algo_name'] == 'mf':
             from daisy.model.point.MFRecommender import PointMF
             model = PointMF(
@@ -163,7 +162,7 @@ def main(space):
 
     print('Start Calculating Metrics......')
 
-    test_ucands = build_candidates_set(test_ur, total_train_ur, item_pool, candidates_num)
+    test_ucands = build_candidates_set(test_ur, total_train_ur, item_pool, candidates_num, space['context'])
 
     # get predict result
     print('')
@@ -183,10 +182,10 @@ def main(space):
             tmp = pd.DataFrame({
                 'user': [u for _ in test_ucands[u]],
                 'item': test_ucands[u],
-                'rating': [0. for _ in test_ucands[u]], # fake label, make nonsense
+                'rating': [0. for _ in test_ucands[u]],  # fake label, make nonsense
             })
-        tmp_neg_set = sampler.transform(tmp, is_training=False)
-        tmp_dataset = PairData(tmp_neg_set, is_training=False)
+        tmp_neg_set = sampler.transform(tmp, is_training=False, context=space['context'])
+        tmp_dataset = PairData(tmp_neg_set, is_training=False, context=space['context'])
         tmp_loader = data.DataLoader(
             tmp_dataset,
             batch_size=candidates_num,
@@ -198,10 +197,10 @@ def main(space):
             user_u, item_i, context = items[0], items[1], items[2]
             user_u = user_u.to(device)
             item_i = item_i.to(device)
-            context = context.to(device) if space['context'] else None
+            context = context.to(device) if args.context else None
 
             prediction = model.predict(user_u, item_i, context)
-            _, indices = torch.topk(prediction, space['topk'])
+            _, indices = torch.topk(prediction, args.topk)
             top_n = torch.take(torch.tensor(test_ucands[u]), indices).cpu().numpy()
 
         preds[u] = top_n

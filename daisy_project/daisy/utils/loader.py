@@ -43,6 +43,33 @@ def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, l
     else:
         raise ValueError('Invalid dataset preprocess type, origin/Ncore/Nfilter (N is int number) expected')
 
+    # if pos_threshold is not None:
+    #    df = df.query(f'rating >= {pos_threshold}').reset_index(drop=True)
+
+    # reset rating to interaction, here just treat all rating as 1 (Binary)
+    df['rating'] = 1.0
+
+    #10-filter  preprocessing
+    filter_num = 10
+
+    tmp1 = df.groupby(['user'], as_index=False)['item'].count()
+    tmp1.rename(columns={'item': 'cnt_item'}, inplace=True)
+    tmp2 = df.groupby(['item'], as_index=False)['user'].count()
+    tmp2.rename(columns={'user': 'cnt_user'}, inplace=True)
+    df = df.merge(tmp1, on=['user']).merge(tmp2, on=['item'])
+    if level == 'ui':
+        df = df.query(f'cnt_item >= {filter_num} and cnt_user >= {filter_num}').reset_index(drop=True).copy()
+    elif level == 'u':
+        df = df.query(f'cnt_item >= {filter_num}').reset_index(drop=True).copy()
+    elif level == 'i':
+        df = df.query(f'cnt_user >= {filter_num}').reset_index(drop=True).copy()
+    else:
+        raise ValueError(f'Invalid level value: {level}')
+
+    df.drop(['cnt_item', 'cnt_user'], axis=1, inplace=True)
+    del tmp1, tmp2
+    gc.collect()
+
     # encoding user_id and item_id
     df['user'] = pd.Categorical(df['user']).codes
     df['item'] = pd.Categorical(df['item']).codes
@@ -66,7 +93,7 @@ def add_last_clicked_item_context(df, user_num):
     return new_df
 
 
-def get_ur(df, context=False):
+def get_ur(df, context=False, eval=False):
     """
     Method of getting user-rating pairs
     Parameters
@@ -79,7 +106,7 @@ def get_ur(df, context=False):
     """
     ur = defaultdict(set)
     for _, row in df.iterrows():
-        if context:
+        if context and not eval:
             ur[int(row['user']), int(row['context'])].add(int(row['item']))
         else:
             ur[int(row['user'])].add(int(row['item']))
@@ -161,7 +188,7 @@ def convert_npy_mat(user_num, item_num, df):
     return mat
 
 
-def build_candidates_set(test_ur, train_ur, item_pool, candidates_num=1000):
+def build_candidates_set(test_ur, train_ur, item_pool, candidates_num=1000, context_flag=False):
     """
     method of building candidate items for ranking
     Parameters
@@ -177,13 +204,25 @@ def build_candidates_set(test_ur, train_ur, item_pool, candidates_num=1000):
     test_ucands = defaultdict(list)
     for k, v in test_ur.items():
         sample_num = candidates_num - len(v) if len(v) < candidates_num else 0
-        sub_item_pool = item_pool - v - train_ur[k]  # remove GT & interacted
-        sample_num = min(len(sub_item_pool), sample_num)
-        if sample_num == 0:
-            samples = random.sample(v, candidates_num)
-            test_ucands[k] = list(set(samples))
+        if context_flag:
+            user = k[0]
+            context = k[1]
+            sub_item_pool = item_pool - v - train_ur[user]  # remove GT & interacted
+            sample_num = min(len(sub_item_pool), sample_num)
+            if sample_num == 0:
+                samples = random.sample(v, candidates_num)
+                test_ucands[(user, context)] = list(set(samples))
+            else:
+                samples = random.sample(sub_item_pool, sample_num)
+                test_ucands[(user, context)] = list(v | set(samples))
         else:
-            samples = random.sample(sub_item_pool, sample_num)
-            test_ucands[k] = list(v | set(samples))
+            sub_item_pool = item_pool - v - train_ur[k]  # remove GT & interacted (with same context)
+            sample_num = min(len(sub_item_pool), sample_num)
+            if sample_num == 0:
+                samples = random.sample(v, candidates_num)
+                test_ucands[k] = list(set(samples))
+            else:
+                samples = random.sample(sub_item_pool, sample_num)
+                test_ucands[k] = list(v | set(samples))
     
     return test_ucands
