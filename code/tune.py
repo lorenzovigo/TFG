@@ -51,9 +51,7 @@ def opt_func(space):
             lr=args.lr,
             reg_1=args.reg_1,
             reg_2=args.reg_2,
-            loss_type=args.loss_type,
             GCE_flag=args.gce,
-            reindex=args.reindex,
             X=X if args.gce else None,
             A=edge_idx if args.gce else None,
             gpuid=args.gpu,
@@ -70,77 +68,13 @@ def opt_func(space):
             lr=args.lr,
             reg_1=args.reg_1,
             reg_2=args.reg_2,
-            loss_type=args.loss_type,
             GCE_flag=args.gce,
-            reindex=args.reindex,
             X=X if args.gce else None,
             A=edge_idx if args.gce else None,
             gpuid=args.gpu,
             dropout=args.dropout
         )
-    elif args.algo_name == 'nfm':
-        from daisy.model.pair.NFMRecommender import PairNFM
 
-        model = PairNFM(
-            user_num,
-            max_dim,
-            factors=args.factors,
-            act_function=args.act_func,
-            num_layers=args.num_layers,
-            batch_norm=args.no_batch_norm,
-            dropout=args.dropout,
-            epochs=args.epochs,
-            lr=args.lr,
-            reg_1=args.reg_1,
-            reg_2=args.reg_2,
-            loss_type=args.loss_type,
-            GCE_flag=args.gce,
-            reindex=args.reindex,
-            X=X if args.gce else None,
-            A=edge_idx if args.gce else None,
-            gpuid=args.gpu,
-            mf=args.mf
-        )
-    elif args.algo_name == 'ncf':
-        layers = [len(dims[:-2]) * 32, 32, 16, 8] if not args.context else [len(dims[:-2]) * 32, 32, 16, 8]
-        from daisy.model.pair.NCFRecommender import PairNCF
-
-        model = PairNCF(
-            user_num,
-            max_dim,
-            factors=args.factors,
-            layers=layers,
-            GCE_flag=args.gce,
-            reindex=args.reindex,
-            X=X if args.gce else None,
-            A=edge_idx if args.gce else None,
-            gpuid=args.gpu,
-            mf=args.mf,
-            dropout=args.dropout
-        )
-    elif args.algo_name == 'deepfm':
-        from daisy.model.pair.DeepFMRecommender import PairDeepFM
-
-        model = PairDeepFM(
-            user_num,
-            max_dim,
-            factors=args.factors,
-            act_activation=args.act_func,
-            num_layers=args.num_layers,
-            batch_norm=args.no_batch_norm,
-            dropout=args.dropout,
-            epochs=args.epochs,
-            lr=args.lr,
-            reg_1=args.reg_1,
-            reg_2=args.reg_2,
-            loss_type=args.loss_type,
-            GCE_flag=args.gce,
-            reindex=args.reindex,
-            context_flag=args.context,
-            X=X if args.gce else None,
-            A=edge_idx if args.gce else None,
-            gpuid=args.gpu,
-        )
     else:
         raise ValueError('Invalid algorithm name')
 
@@ -170,15 +104,14 @@ if __name__ == '__main__':
         device = "cpu"
 
     ''' LOAD DATA AND ADD CONTEXT IF NECESSARY '''
-    df, users, items = load_rate(args.dataset, args.prepro, binary=True, context=args.context, gce_flag=args.gce,
+    df, users, items = load_rate(args.dataset, args.prepro, context=args.context, gce_flag=args.gce,
                                  cut_down_data=args.cut_down_data)
-    if args.reindex:
-        df = df.astype(np.int64)
-        df['item'] = df['item'] + users
-        if args.context:
-            df = add_last_clicked_item_context(df, args.dataset)
-            # check last number is positive
-            assert df['item'].tail().values[-1] > 0
+    df = df.astype(np.int64)
+    df['item'] = df['item'] + users
+    if args.context:
+        df = add_last_clicked_item_context(df, args.dataset)
+        # check last number is positive
+        assert df['item'].tail().values[-1] > 0
 
     ''' SPLIT DATA '''
     train_set, test_set = split_test(df, args.test_method, args.test_size)
@@ -200,7 +133,7 @@ if __name__ == '__main__':
 
     total_train_ur = get_ur(train_set, context=args.context, eval=True)
     # initial candidate item pool
-    item_pool = set(range(dims[0], dims[1])) if args.reindex else set(range(dims[1]))
+    item_pool = set(range(dims[0], dims[1]))
     candidates_num = args.cand_num
 
     print('=' * 50, '\n')
@@ -210,7 +143,6 @@ if __name__ == '__main__':
         num_ng=args.num_ng,
         sample_method=args.sample_method,
         sample_ratio=args.sample_ratio,
-        reindex=args.reindex
     )
 
     neg_set, adj_mx = sampler.transform(train_set, is_training=True, context=args.context, pair_pos=None)

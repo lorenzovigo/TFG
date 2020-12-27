@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 
 class Sampler(object):
-    def __init__(self, dims, num_ng=4, sample_method='item-desc', sample_ratio=0, reindex=False):
+    def __init__(self, dims, num_ng=4, sample_method='item-desc', sample_ratio=0):
         """
         negative sampling class for some algorithms
         Parameters
@@ -25,7 +25,6 @@ class Sampler(object):
         self.num_ng = num_ng
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
-        self.reindex = reindex
 
         assert sample_method in ['uniform', 'item-ascd', 'item-desc'], f'Invalid sampling method: {sample_method}'
         assert 0 <= sample_ratio <= 1, 'Invalid sample ratio value'
@@ -58,28 +57,23 @@ class Sampler(object):
 
         # IDEA: build_adj_mx
         if pair_pos is None:
-            if self.reindex:
-                dims = self.dims[:3] if context else self.dims[:2]
-                adj_mx = sp.dok_matrix((dims[-1], dims[-1]), dtype=np.float32)
-                neg_sample_pool = list(range(user_num, item_num))
-            else:
-                adj_mx = sp.dok_matrix((user_num, item_num), dtype=np.float32)
-                neg_sample_pool = list(range(item_num))
+            dims = self.dims[:3] if context else self.dims[:2]
+            adj_mx = sp.dok_matrix((dims[-1], dims[-1]), dtype=np.float32)
+            neg_sample_pool = list(range(user_num, item_num))
 
             for _, row in tqdm(sampled_df.iterrows(), desc="Building adjacency mx ...", total=len(sampled_df)):
                 adj_mx[int(row['user']), int(row['item'])] = 1.0
-                if self.reindex:
-                    adj_mx[int(row['item']), int(row['user'])] = 1.0
-                    if context:
-                        # for idx in range(len(row[2:]) -2):  #subtract rating and timestamp
-                        adj_mx[int(row['user']), int(row['context'])] = 1.0
-                        adj_mx[int(row['item']), int(row['context'])] = 1.0
+                adj_mx[int(row['item']), int(row['user'])] = 1.0
+                if context:
+                    # for idx in range(len(row[2:]) -2):  #subtract rating and timestamp
+                    adj_mx[int(row['user']), int(row['context'])] = 1.0
+                    adj_mx[int(row['item']), int(row['context'])] = 1.0
 
-                        adj_mx[int(row['context']), int(row['user'])] = 1.0
-                        adj_mx[int(row['context']), int(row['item'])] = 1.0
+                    adj_mx[int(row['context']), int(row['user'])] = 1.0
+                    adj_mx[int(row['context']), int(row['item'])] = 1.0
         else:
             adj_mx = pair_pos
-            neg_sample_pool = list(range(user_num, item_num)) if self.reindex else list(range(item_num))
+            neg_sample_pool = list(range(user_num, item_num))
 
         popularity_item_list = sampled_df['item'].value_counts().index.tolist()
         if self.sample_method == 'item-desc':
@@ -99,9 +93,9 @@ class Sampler(object):
 
                 js = []
                 for _ in range(uni_num):
-                    j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                    j = np.random.randint(user_num, item_num)
                     while (u, j) in adj_mx:
-                        j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                        j = np.random.randint(user_num, item_num)
                     js.append(j)
                 for _ in range(ex_num):
                     if self.sample_method in ['item-desc', 'item-ascd']:
@@ -115,9 +109,9 @@ class Sampler(object):
                         # maybe add other sample methods in future, uniform as default
                         # j = np.random.randint(item_num)
                         try:
-                            j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                            j = np.random.randint(user_num, item_num)
                             while (u, j) in adj_mx:
-                                j = np.random.randint(user_num, item_num) if self.reindex else np.random.randint(item_num)
+                                j = np.random.randint(user_num, item_num)
                             js.append(j)
                         except:
                             embed()

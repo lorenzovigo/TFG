@@ -14,6 +14,8 @@ from utils.splitter import split_test, split_validation, perform_evaluation
 from utils.data import PairData, sparse_mx_to_torch_sparse_tensor
 from utils.loader import load_rate, get_ur, build_candidates_set, add_last_clicked_item_context
 
+from model.pair.train import train
+
 from torch_geometric.utils import from_scipy_sparse_matrix
 from scipy.sparse import identity
 
@@ -62,9 +64,9 @@ if __name__ == '__main__':
     date = datetime.now().strftime('%y%m%d%H%M%S')
     if args.logs:
         if len(args.logsname) == 0:
-            string = "reindexed" if args.reindex and not args.gce else "graph"
+            string = "reindexed" if  not args.gce else "graph"
             context_folder = "context" if args.context else "no_context"
-            loss = 'BPR' if args.loss_type == "BPR" else "CL"
+            loss = 'BPR'
             sampling = 'neg_sampling_each_epoch' if args.neg_sampling_each_epoch else ""
             writer = SummaryWriter(log_dir=f'logs/{args.dataset}/{context_folder}/'
             f'logs_{loss}_lr={args.lr}_DO={args.dropout}_{args.algo_name}_{string}_{args.epochs}epochs_{sampling}_{date}/')
@@ -73,8 +75,6 @@ if __name__ == '__main__':
     else:
         writer = SummaryWriter(log_dir=f'logs/nologs/logs/')
 
-    if args.dataset == 'epinions':
-        args.lr = 0.001
 
     # p = multiprocessing.Pool(args.num_workers)
     # FIX SEED AND SELECT DEVICE
@@ -93,23 +93,19 @@ if __name__ == '__main__':
     time_log = open('time_log.txt', 'a')
     
     ''' LOAD DATA AND ADD CONTEXT IF NECESSARY '''
-    df, users, items = load_rate(args.dataset, args.prepro, binary=True, context=args.context, gce_flag=args.gce,
+    df, users, items = load_rate(args.dataset, args.prepro, context=args.context, gce_flag=args.gce,
                                  cut_down_data=args.cut_down_data)
-    if args.reindex:
-        df = df.astype(np.int64)
-        df['item'] = df['item'] + users
-        if args.context:
-            df = add_last_clicked_item_context(df, args.dataset)
-            # check last number is positive
-            assert df['item'].tail().values[-1] > 0
+    df = df.astype(np.int64)
+    df['item'] = df['item'] + users
+    if args.context:
+        df = add_last_clicked_item_context(df, args.dataset)
+        # check last number is positive
+        assert df['item'].tail().values[-1] > 0
 
     ''' SPLIT DATA '''
     train_set, test_set = split_test(df, args.test_method, args.test_size)
     train_set, val_set, _ = split_validation(train_set, val_method=args.test_method, list_output=False)
 
-    # temporary used for tuning test result
-    # train_set = pd.read_csv(f'./experiment_data/train_{args.dataset}_{args.prepro}_{args.test_method}.dat')
-    # test_set = pd.read_csv(f'./experiment_data/test_{args.dataset}_{args.prepro}_{args.test_method}.dat')
     df = pd.concat([train_set, test_set], ignore_index=True)
     dims = np.max(df.to_numpy().astype(int), axis=0) + 1
     if args.dataset in ['yelp']:
@@ -123,7 +119,7 @@ if __name__ == '__main__':
     
     total_train_ur = get_ur(train_set, context=args.context, eval=True)
     # initial candidate item pool
-    item_pool = set(range(dims[0], dims[1])) if args.reindex else set(range(dims[1]))
+    item_pool = set(range(dims[0], dims[1]))
     candidates_num = args.cand_num
 
     print('='*50, '\n')
@@ -134,7 +130,6 @@ if __name__ == '__main__':
         num_ng=args.num_ng, 
         sample_method=args.sample_method, 
         sample_ratio=args.sample_ratio,
-        reindex=args.reindex
     )
     neg_set, adj_mx = sampler.transform(train_set, is_training=True, context=args.context, pair_pos=None)
     if args.gce:
@@ -148,53 +143,45 @@ if __name__ == '__main__':
         # TODO: should I pow the matrix here?
         edge_idx = edge_idx.to(device)
 
-    if args.problem_type == 'pair':
-        # train_dataset = PairData(neg_set, is_training=True, context=args.context)
-        train_dataset = PairData(train_set, sampler=sampler, adj_mx=adj_mx, is_training=True, context=args.context)
+    train_dataset = PairData(train_set, sampler=sampler, adj_mx=adj_mx, is_training=True, context=args.context)
 
     user_num = dims[0]
     max_dim = dims[2] if args.context else dims[1]
-    if args.problem_type == 'pair':
-        if args.algo_name == 'mf':
-            from model.pair.MFRecommender import PairMF
-            model = PairMF(
-                user_num, 
-                max_dim,
-                factors=args.factors,
-                epochs=args.epochs,
-                lr=args.lr,
-                reg_1=args.reg_1,
-                reg_2=args.reg_2,
-                loss_type=args.loss_type,
-                GCE_flag=args.gce,
-                reindex=args.reindex,
-                X=X if args.gce else None,
-                A=edge_idx if args.gce else None,
-                gpuid=args.gpu,
-                dropout=args.dropout
-            )
-        elif args.algo_name == 'fm':
-            from model.pair.FMRecommender import PairFM
-            model = PairFM(
-                user_num, 
-                max_dim,
-                factors=args.factors,
-                epochs=args.epochs,
-                lr=args.lr,
-                reg_1=args.reg_1,
-                reg_2=args.reg_2,
-                loss_type=args.loss_type,
-                GCE_flag=args.gce,
-                reindex=args.reindex,
-                X=X if args.gce else None,
-                A=edge_idx if args.gce else None,
-                gpuid=args.gpu,
-                dropout=args.dropout
-            )
-        else:
-            raise ValueError('Invalid algorithm name')
+    if args.algo_name == 'mf':
+        from model.pair.MFRecommender import PairMF
+        model = PairMF(
+            user_num,
+            max_dim,
+            factors=args.factors,
+            epochs=args.epochs,
+            lr=args.lr,
+            reg_1=args.reg_1,
+            reg_2=args.reg_2,
+            GCE_flag=args.gce,
+            X=X if args.gce else None,
+            A=edge_idx if args.gce else None,
+            gpuid=args.gpu,
+            dropout=args.dropout
+        )
+    elif args.algo_name == 'fm':
+        from model.pair.FMRecommender import PairFM
+        model = PairFM(
+            user_num,
+            max_dim,
+            factors=args.factors,
+            epochs=args.epochs,
+            lr=args.lr,
+            reg_1=args.reg_1,
+            reg_2=args.reg_2,
+            GCE_flag=args.gce,
+            X=X if args.gce else None,
+            A=edge_idx if args.gce else None,
+            gpuid=args.gpu,
+            dropout=args.dropout
+        )
     else:
-        raise ValueError('Invalid problem type')
+        raise ValueError('Invalid algorithm name')
+
 
     ''' BUILD RECOMMENDER PIPELINE '''
 
@@ -208,11 +195,8 @@ if __name__ == '__main__':
                                                context_flag=args.context)
     
     s_time = time.time()
-    if args.problem_type == 'pair':
-        from model.pair.train import train
-        train(args, model, train_loader, device, args.context, loaders, candidates, val_ur, writer=writer)
-    else:
-        raise ValueError()
+    train(args, model, train_loader, device, args.context, loaders, candidates, val_ur, writer=writer)
+
     # model.fit(train_loader)
     elapsed_time = time.time() - s_time
 

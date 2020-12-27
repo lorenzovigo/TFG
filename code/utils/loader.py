@@ -28,16 +28,13 @@ def cut_down_data_half(df):
     return cut_df
 
 
-def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, level='ui', context=False,
-              gce_flag=False, cut_down_data=False):
+def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_flag=False, cut_down_data=False):
     """
     Method of loading certain raw data
     Parameters
     ----------
     src : str, the name of dataset
     prepro : str, way to pre-process raw data input, expect 'origin', f'{N}core', f'{N}filter', N is integer value
-    binary : boolean, whether to transform rating to binary label as CTR or not as Regression
-    pos_threshold : float, if not None, treat rating larger than this threshold as positive sample
     level : str, which level to do with f'{N}core' or f'{N}filter' operation (it only works when prepro contains 'core' or 'filter')
 
     Returns
@@ -65,13 +62,8 @@ def load_rate(src='ml-100k', prepro='origin', binary=True, pos_threshold=None, l
     else:
         raise ValueError('Invalid Dataset Error')
 
-    # set rating >= threshold as positive samples
-    if pos_threshold is not None:
-        df = df.query(f'rating >= {pos_threshold}').reset_index(drop=True)
-
     # reset rating to interaction, here just treat all rating as 1
-    if binary:
-        df['rating'] = 1.0
+    df['rating'] = 1.0
 
     # which type of pre-dataset will use
     if prepro == 'origin':

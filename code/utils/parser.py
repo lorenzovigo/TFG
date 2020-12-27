@@ -12,10 +12,6 @@ def parse_args():
     parser.add_argument("--logs", action="store_true", default=True, help="Enables logs")
     parser.add_argument("--not_early_stopping", action="store_true", default=False, help="Enables not doing early stopping")
     parser.add_argument("--logsname", default="", help="Enables logs")
-    parser.add_argument('--reindex',
-                        action='store_false',
-                        default=True,
-                        help='activate if do not want to reindex items')
     parser.add_argument('--neg_sampling_each_epoch',
                         action='store_true',
                         default=False,
@@ -67,11 +63,11 @@ def parse_args():
     parser.add_argument('--test_method', 
                         type=str, 
                         default='tloo',
-                        help='method for split test,options: ufo/loo/fo(split by ratio)/tfo/tloo')
+                        help='method for split test,options: loo/tloo')
     parser.add_argument('--val_method', 
                         type=str, 
                         default='tloo',
-                        help='validation method, options: cv, tfo, loo, tloo')
+                        help='validation method, options: loo, tloo')
     parser.add_argument('--test_size', 
                         type=float, 
                         default=0.2,
@@ -107,14 +103,7 @@ def parse_args():
                         type=int, 
                         default=4,
                         help='negative sampling number')
-    parser.add_argument('--loss_type', 
-                        type=str, 
-                        default='BPR',
-                        help='loss function type: BPR/CL')
-    parser.add_argument('--optimizer',
-                        type=str,
-                        default='adam',
-                        help='type of optimizer: SGD /adam')
+
     # algo settings
     parser.add_argument('--factors', 
                         type=int, 
