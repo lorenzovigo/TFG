@@ -1,0 +1,25 @@
+We should include the used datasets in this folder, you can download both of them from the following links:
+
+MovieLens 100K Dataset (ml-100k): https://grouplens.org/datasets/movielens/100k/
+MovieLens 1M Dataset (ml-1m): https://grouplens.org/datasets/movielens/1m/
+
+The resulting folder structure should be:
+
+data/
+	ml-1m/
+		movies.dat
+		ratings.dat
+		README
+		users.dat
+	ml-100k/
+		allbut.pl
+		mku.sh
+		README
+		u.data
+		... (18 more files)
+		ub.test
+	online-data/
+		...
+	datasources.txt
+
+'online-data' folder will be auto-generated once the dataset extension script is executed and it will contain all the information downloaded through the MovieDB API.

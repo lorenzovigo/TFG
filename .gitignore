@@ -1,5 +1,6 @@
 .idea/
 runs/
-data/
+data/*
+!data/datasources.txt
 __pycache__/
 logs/
