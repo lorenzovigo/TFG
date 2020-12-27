@@ -1,23 +1,64 @@
-# TFG
+# Content Aware Recommending Systems with Graph Convolutional Embeddings (CARS-GCE)
+#### Double Degree in Mathematics and Computer Science, Universitat de Barcelona
+#### Degree's Final Project (TFG), 2020-2021
+_____
 
-**Local Execution**
+This project consists in a **Recommender System** that will allow us to compare the performance of different models (**Matrix Factorization** and **Factorization Machines**) set in their optimal hyperparamaters (using **HyperOpt** in order to find them), with the added possibility of applying extensions to said models, such as the use of **Graph Convolutional Embeddings** and online information to make our system more **context-aware**.
 
-Clone the repository and runn these two lines in terminal from repository's root folder.
+You'll find two main folders in this repository's root: code (which contains the whole project) and data (where datasets should be included). We'll now explain how to execute all of the project's workflows.
 
-```
-$ cd project
-$ python main.py
-```
+## **Get your datasets ready**
+_____
 
-There are many options available through arguments, which are explained later.
+### **Download your datasets (required)**
 
-**Remote Execution using Google Colab**
+First of all, clone the repository locally.
 
-You can also execute the script using Google Colab for better results. Follow the steps in this notebook: https://colab.research.google.com/drive/1Va_Zr-DpotTGD41CHB4uwYu1CEvr5ThV?usp=sharing
+Then, **download at least one of the datasets** available for training the model. You can find them in the following links and **you should include them in the data folder**:
 
-The script will run with the default options, you can choose your own arguments by modifying some cells. Please, take care of the original script.
+MovieLens 100K Dataset (ml-100k): https://grouplens.org/datasets/movielens/100k/
+MovieLens 1M Dataset (ml-1m): https://grouplens.org/datasets/movielens/1m/
 
-**Arguments**
+There's more information on the needed folder structure in `datasources.txt`, file that can be found in the data folder.
+
+### **Extend your datasets (optional)**
+
+In case you are willing to **use online data to extend the previous datasets**, you should **execute the following command** in root folder:
+
+	python code/dataset_extender.py --api_key=<api_key>
+
+<api_key> should be substituted by a **MovieDB API Key** (more information here: https://developers.themoviedb.org/3/getting-started/introduction). This command will download information about movie **genres and actors** for all the movies in ml-100k dataset. **We highly recommend execute with hours of anticipation**, since depending on factors such as your internet connection and the dataset you are extending, it may take **several hours to complete and it should not be interrupted.**
+
+Should you interrupt the process, don't you worry: the script will be much faster while processing movies which data has already been downloaded from the API.
+
+**Available arguments:**
+
+`--dataset=ml-1m`
+Will switch the dataset you are extending. Example:
+	python code/dataset_extender.py --dataset=ml-1m
+
+`--no_genres`
+Skips downloading movie genre information while extending the dataset. Examples:
+	python code/dataset_extender.py --no_genres
+	python code/dataset_extender.py --dataset=ml-1m --no_genres
+
+`--no_actors`
+Works the same way as the previous command, but it's used in order to skip downloading information about the actors taking part in the movies.
+
+`--no_post_processing`
+Prevents the extender from ignoring actors that are not relevant enough in the dataset to be included in the dataset extension.
+
+`--min_actor_appearances=<value>`
+Where <value> is an integer, number of movies the actor should take part in in the dataset in order to be considered relevant enough to be included in the extension. Default value is 10.
+
+
+## **Tune your model settings (optional)**
+_____
+
+## **Main exectuion**
+_____
+
+**Arguments (optional)**
 
 You can always run this command in order to get the most updated help on arguments:
 

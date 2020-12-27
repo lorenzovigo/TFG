@@ -169,11 +169,11 @@ if __name__ == '__main__':
 
     # other args
     parser.add_argument("--dataset", default='ml-100k', choices=['ml-100k', 'ml-1m'], help="Dataset to extend")
-    parser.add_argument("--genres", default=True, action='store_false', help="Add genres to extended dataset")
-    parser.add_argument("--actors", default=True, action='store_false', help="Add actors to extended dataset")
-    parser.add_argument("--post_processing", default=True, action='store_false', help="Delete marginal actors from dataset")
+    parser.add_argument("--no_genres", default=False, action='store_true', help="Skip adding genres to extended dataset")
+    parser.add_argument("--no_actors", default=False, action='store_true', help="Skin adding actors to extended dataset")
+    parser.add_argument("--no_post_processing", default=False, action='store_true', help="Avoids deleting marginal actors from dataset")
     parser.add_argument("--min_actor_appearances", default=10, type=int, help="Minimum appearances needed by an actor not to be deleted from extended dataset during post-processing")
 
     args = parser.parse_args()
-    extend_dataset(args.api_key, args.dataset, args.genres, args.actors, args.post_processing, args.min_actor_appearances)
+    extend_dataset(args.api_key, args.dataset, not args.no_genres, not args.no_actors, not args.no_post_processing, args.min_actor_appearances)
 
