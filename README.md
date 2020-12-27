@@ -30,7 +30,7 @@ In case you are willing to **use online data to extend the previous datasets**, 
 
 	python dataset_extender.py --api_key=<api_key>
 
-<api_key> should be substituted by a **MovieDB API Key** (more information here: https://developers.themoviedb.org/3/getting-started/introduction). 
+`<api_key>` should be substituted by a **MovieDB API Key** (more information here: https://developers.themoviedb.org/3/getting-started/introduction). 
 
 This command will download information about movie **genres and actors** for all the movies in ml-100k dataset. **We highly recommend execute with hours of anticipation**, since depending on factors such as your internet connection and the dataset you are extending, it may take **several hours to complete and it should not be interrupted.**
 
@@ -61,7 +61,7 @@ Prevents the extender from ignoring actors that are not relevant enough in the d
 
 `--min_actor_appearances=<value>`
 
-Where <value> is an integer, number of movies the actor should take part in in the dataset in order to be considered relevant enough to be included in the extension. Default value is 10.
+Where `<value>` is an integer, number of movies the actor should take part in in the dataset in order to be considered relevant enough to be included in the extension. Default value is 10.
 
 
 ## **Tune your model settings (optional)**
