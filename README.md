@@ -3,9 +3,9 @@
 #### Degree's Final Project (TFG), 2020-2021
 _____
 
-This project consists in a **Recommender System** that will allow us to compare the performance of different models (**Matrix Factorization** and **Factorization Machines**) set in their optimal hyperparamaters (using **HyperOpt** in order to find them), with the added possibility of applying extensions to said models, such as the use of **Graph Convolutional Embeddings** and online information to make our system more **context-aware**.
+This project consists in a **Recommender System** that will allow us to compare the performance of different models (**Matrix Factorization** and **Factorization Machines**) set in their optimal hyperparamaters (using **HyperOpt** in order to find them), with the added possibility of applying extensions to said models, such as the use of **Graph Convolutional Embeddings** and online information to make our system more **context aware**.
 
-You'll find two main folders in this repository's root: code (which contains the whole project) and data (where datasets should be included). We'll now explain how to execute all of the project's workflows.
+You'll find two main folders in this repository's root: `code` (which contains the whole project) and `data` (where datasets should be included). We'll now explain how to execute all of the project's workflows.
 
 ## **Get your datasets ready**
 
@@ -15,24 +15,24 @@ _____
 
 First of all, clone the repository locally.
 
-Then, **download at least one of the datasets** available for training the model. You can find them in the following links and **you should include them in the data folder**:
+Then, **download at least one of the datasets** available for model training. You can find them in the following links and **they shoud be added to the `data` folder**:
 
 - MovieLens 100K Dataset (ml-100k): https://grouplens.org/datasets/movielens/100k/
 - MovieLens 1M Dataset (ml-1m): https://grouplens.org/datasets/movielens/1m/
 
-There's more information on the needed folder structure in `datasources.txt`, file that can be found in the data folder.
+There's more information on the needed folder structure in `datasources.txt`, file that can be found in the `data` folder.
 
 ### **Extend your datasets (optional)**
 
 _____
 
-In case you are willing to **use online data to extend the previous datasets**, you should **execute the following command in code folder**:
+In case you are willing to **use online data to extend the previous datasets**, you should **execute the following command in `code` folder**:
 
 	python dataset_extender.py --api_key=<api_key>
 
-`<api_key>` should be substituted by a **MovieDB API Key** (more information here: https://developers.themoviedb.org/3/getting-started/introduction). 
+`<api_key>` should be substituted by a **MovieDB API Key** owned by you (more information here: https://developers.themoviedb.org/3/getting-started/introduction). 
 
-This command will download information about movie **genres and actors** for all the movies in ml-100k dataset. **We highly recommend execute with hours of anticipation**, since depending on factors such as your internet connection and the dataset you are extending, it may take **several hours to complete and it should not be interrupted.**
+This command will download information about movie **genres and actors** for all the movies in ml-100k dataset. **We highly recommend executing this script with hours of anticipation**, since depending on factors such as your internet connection and the dataset you are extending, it may take **several hours to complete and it should not be interrupted.**
 
 Should you interrupt the process, don't you worry: the script will be much faster while processing movies which data has already been downloaded from the API.
 
