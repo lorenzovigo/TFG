@@ -162,6 +162,14 @@ def parse_args():
                         action='store_false', 
                         default=True, 
                         help='whether do batch normalization in interior layers')
+    parser.add_argument('--genres',
+                         action='store_true',
+                         default=False,
+                         help='use genres from extended dataset')
+    parser.add_argument('--actors',
+                         action='store_true',
+                         default=False,
+                         help='use actors from extended dataset')
 
     args = parser.parse_args()
 

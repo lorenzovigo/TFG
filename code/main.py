@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
+import ast
 from tqdm import tqdm
 from datetime import datetime
 
@@ -17,7 +18,7 @@ from utils.loader import load_rate, get_ur, build_candidates_set, add_last_click
 from model.pair.train import train
 
 from torch_geometric.utils import from_scipy_sparse_matrix
-from scipy.sparse import identity
+from scipy.sparse import identity, lil_matrix, hstack
 
 
 def build_evaluation_set(test_ur, total_train_ur, item_pool, candidates_num, sampler, context_flag=False, tune=False):
@@ -101,6 +102,9 @@ if __name__ == '__main__':
         df = add_last_clicked_item_context(df, args.dataset)
         # check last number is positive
         assert df['item'].tail().values[-1] > 0
+        df['context'] = df['context'] + items
+
+
 
     ''' SPLIT DATA '''
     train_set, test_set = split_test(df, args.test_method, args.test_size)
@@ -137,11 +141,51 @@ if __name__ == '__main__':
         if args.mh > 1:
             print(f'[ MULTI HOP {args.mh} ACTIVATED ]')
             adj_mx = adj_mx.__pow__(int(args.mh))
-        X = sparse_mx_to_torch_sparse_tensor(identity(adj_mx.shape[0])).to(device)
+        X = identity(adj_mx.shape[0])
+
+        if args.genres or args.actors:
+            extended_dataset = pd.read_csv('../data/online_data/extended-' + args.dataset + '.csv', sep=',')
+            movie_id_mapping = train_set[['item', 'original item id']].copy().drop_duplicates().sort_values(by=['item']).reset_index(drop=True)
+
+        if args.genres:
+            # Check how many genres there are. Since we know we saved genres in order in every movie we can do this:
+            num_genres = max([sublist[-1] if sublist else -1 for sublist in extended_dataset['genres'].apply(ast.literal_eval).tolist()]) + 1
+            # If we can't guarantee genres are in order, use this: (less efficient)
+            # num_genres = max([x for sublist in extended_dataset['genres'].apply(ast.literal_eval).tolist() for x in sublist])
+
+            # Add genre information to a new matrix and then concatenate with X
+            genre_extension_matrix = lil_matrix((adj_mx.shape[0], num_genres), dtype=np.int8)
+            for index, row in tqdm(movie_id_mapping.iterrows(), desc='Adding genres'):
+                genres = extended_dataset.loc[extended_dataset['id'] == row['original item id'] - 1, 'genres'].reset_index(drop=True)
+                if not genres.empty:
+                    for genre in ast.literal_eval(genres[0]):
+                        genre_extension_matrix[row['item'] + 1, genre] = 1
+            X = hstack([X, genre_extension_matrix])
+
+        if args.actors:
+            # Check how many genres there are. Since we know we saved genres in order in every movie we can do this:
+            num_actors = max([sublist[-1] if sublist else -1 for sublist in extended_dataset['actors'].apply(ast.literal_eval).tolist()]) + 1
+            # Add genre information to a new matrix and then concatenate with X
+            actor_extension_matrix = lil_matrix((adj_mx.shape[0], num_actors), dtype=np.int8)
+            for index, row in tqdm(movie_id_mapping.iterrows(), desc='Adding actors'):
+                actors = extended_dataset.loc[extended_dataset['id'] == row['original item id'] - 1, 'actors'].reset_index(drop=True)
+                if not actors.empty:
+                    for actor in ast.literal_eval(actors[0]):
+                        actor_extension_matrix[row['item'] + 1, actor] = 1
+            X = hstack([X, actor_extension_matrix])
+
+        X = X.transpose()
+
         # We retrieve the graph's edges and send both them and graph to device in the next two lines
+
+        X = sparse_mx_to_torch_sparse_tensor(X).to(device)
         edge_idx, edge_attr = from_scipy_sparse_matrix(adj_mx)
         # TODO: should I pow the matrix here?
         edge_idx = edge_idx.to(device)
+
+    train_set.drop(['original item id'], axis=1)
+    test_set.drop(['original item id'], axis=1)
+    val_set.drop(['original item id'], axis=1)
 
     train_dataset = PairData(train_set, sampler=sampler, adj_mx=adj_mx, is_training=True, context=args.context)
 

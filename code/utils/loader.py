@@ -62,6 +62,7 @@ def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_fla
     else:
         raise ValueError('Invalid Dataset Error')
 
+
     # reset rating to interaction, here just treat all rating as 1
     df['rating'] = 1.0
 
@@ -135,6 +136,7 @@ def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_fla
         raise ValueError('Invalid dataset preprocess type, origin/Ncore/Nfilter (N is int number) expected')
 
     # encoding user_id and item_id
+    df['original item id'] = df['item']
     df['user'] = pd.Categorical(df['user']).codes
     df['item'] = pd.Categorical(df['item']).codes
 
@@ -149,7 +151,7 @@ def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_fla
 def add_last_clicked_item_context(df, dataset=''):
     df['context'] = df[df.columns[2]] if dataset == 'frappe' else df['rating']
     timestamp_flag = False if dataset == 'frappe' else True
-    df = df[['user', 'item', 'context', 'rating', 'timestamp']]
+    df = df[['user', 'item', 'context', 'rating', 'timestamp', 'original item id']]
     data = df.to_numpy().astype(int)
     assert data[:, 1].min() == data[:, 0].max() + 1
     # let space for film UNKNOWN
