@@ -166,12 +166,16 @@ if __name__ == '__main__':
             # Check how many genres there are. Since we know we saved genres in order in every movie we can do this:
             num_actors = max([sublist[-1] if sublist else -1 for sublist in extended_dataset['actors'].apply(ast.literal_eval).tolist()]) + 1
             # Add genre information to a new matrix and then concatenate with X
-            actor_extension_matrix = lil_matrix((adj_mx.shape[0], num_actors), dtype=np.int8)
+            actor_extension_matrix = lil_matrix((adj_mx.shape[0], num_actors + 3), dtype=np.int8)
             for index, row in tqdm(movie_id_mapping.iterrows(), desc='Adding actors'):
                 actors = extended_dataset.loc[extended_dataset['id'] == row['original item id'] - 1, 'actors'].reset_index(drop=True)
                 if not actors.empty:
                     for actor in ast.literal_eval(actors[0]):
                         actor_extension_matrix[row['item'] + 1, actor] = 1
+                for i in range(1, 4):
+                    flag = extended_dataset.loc[extended_dataset['id'] == row['original item id'] - 1, 'flag' + str(i)].reset_index(drop=True)
+                    if not flag.empty:
+                        actor_extension_matrix[row['item'], i*-1] = flag[0]
             X = hstack([X, actor_extension_matrix])
 
         X = X.transpose()
