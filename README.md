@@ -61,7 +61,9 @@ Works the same way as the previous command, but it's used in order to skip downl
 
 _____
 
-We include a dataset to **filter out actors with few appearances** along the movies included in the datasets. **This script shouldn't be executed unless you extended your datasets first**. Execute the following command in the ode
+We include a dataset to **filter out actors with few appearances** along the movies included in the datasets. **This script shouldn't be executed unless you extended your datasets first**. Execute the following command in the `code` folder to post-process the MovieLens-100k dataset: 
+
+	python dataset_postprocessor.py
 
 `--dataset=ml-1m`
 
