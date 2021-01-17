@@ -15,12 +15,13 @@ _____
 
 First of all, clone the repository locally.
 
-Then, **download at least one of the datasets** available for model training. You can find them in the following links and **they shoud be added to the `data` folder**:
+Then, **download at least one of the datasets** available for model training. We can do this by **executing the following command in `code` folder**:
 
-- MovieLens 100K Dataset (ml-100k): https://grouplens.org/datasets/movielens/100k/
-- MovieLens 1M Dataset (ml-1m): https://grouplens.org/datasets/movielens/1m/
+	python dataset_downloader.py
 
-There's more information on the needed folder structure in `datasources.txt`, file that can be found in the `data` folder.
+This script will download the **MovieLens 100k dataset**. In case you want to download the **MovieLens 1M dataset**, you may use the `dataset` flag this way:
+
+	python dataset_downloader.py --dataset=ml-1m
 
 ### **Extend your datasets (optional)**
 
@@ -42,22 +43,31 @@ Should you interrupt the process, don't you worry: the script will be much faste
 
 Will switch the dataset you are extending. Example:
 
-	python code/dataset_extender.py --dataset=ml-1m
+	python dataset_extender.py --dataset=ml-1m
 
 `--no_genres`
 
 Skips downloading movie genre information while extending the dataset. Examples:
 
-	python code/dataset_extender.py --no_genres
-	python code/dataset_extender.py --dataset=ml-1m --no_genres
+	python dataset_extender.py --no_genres
+	python dataset_extender.py --dataset=ml-1m --no_genres
 
 `--no_actors`
 
 Works the same way as the previous command, but it's used in order to skip downloading information about the actors taking part in the movies.
 
-`--no_post_processing`
 
-Prevents the extender from ignoring actors that are not relevant enough in the dataset to be included in the dataset extension.
+### **Post-process your datasets (optional)**
+
+_____
+
+We include a dataset to **filter out actors with few appearances** along the movies included in the datasets. **This script shouldn't be executed unless you extended your datasets first**. Execute the following command in the ode
+
+`--dataset=ml-1m`
+
+Will switch the dataset you are post-processing. Example:
+
+	python dataset_postprocessor.py --dataset=ml-1m
 
 `--min_actor_appearances=<value>`
 
