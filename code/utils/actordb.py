@@ -1,20 +1,16 @@
 import os
 import pandas as pd
 import utils.request_handler as rh
-
+from tqdm import tqdm
 
 class ActorDB():
-    # TODO doc
-    def __init__(self, dataset='ml-100k'):
+    def __init__(self, dataset='ml-100k', path=None):
         self.column_names = ['id', 'name', 'appearances']
-        # TODO delete or consider
-        # if 'artistDB.csv' in os.listdir("../../data/online_data"):
-        #    self.df = pd.read_csv('../../data/online_data/artistDB.csv', sep=',', header=None,
-        #                          names=self.column_names, encoding = "ISO-8859-1")
-        # else:
-        self.dataset = dataset
-        # TODO if they don't exist: os.makedirs('../data/online_data')
-        self.df = pd.DataFrame(columns=self.column_names)
+        if not path is None:
+            self.df = pd.read_csv(path)
+        else:
+            self.dataset = dataset
+            self.df = pd.DataFrame(columns=self.column_names)
         self.sorted = False
 
     def get_artist_by_id(self, id):

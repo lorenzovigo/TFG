@@ -5,7 +5,7 @@ from utils.actordb import ActorDB
 from utils.ml1m_genredb import Ml1M_GenreDB
 from tqdm import tqdm
 
-def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True, post_processing=True, min_actor_appearances=10):
+def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True):
     if dataset == 'ml-100k':
         df = pd.read_csv('../data/ml-100k/u.item', sep='|', header=None,
                          names=['movie id', 'movie title', 'release date', 'video release date',
@@ -28,13 +28,13 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True,
         raise ValueError('Invalid Dataset Error')
 
     # names given to columns in extended dataset
-    column_names = ['id', 'title', 'year', 'release date', 'genres', 'actors', 'flag1', 'flag2', 'flag3']
+    column_names = ['id', 'title', 'year', 'release date', 'genres', 'actors']
 
     # extended dataset
     downloaded_data = pd.DataFrame(columns=column_names)
 
-    if post_processing and add_actors: # dataset including information about artists, only needed if post_processing is activated
-        actor_db = ActorDB(dataset=dataset)
+    # dataset including information about artists, needed for post_processing
+    actor_db = ActorDB(dataset=dataset)
 
     for index, row in tqdm(df.iterrows(), total=df.shape[0], position=0, desc='Getting movies info'):
         # consider a title finished when first dot or parenthesis is found
@@ -76,28 +76,13 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True,
             else: # general case
                 actors = rh.getMovieActorIds(rh.getMovieDBId(title, year, api_key), api_key)
 
-            if post_processing: # save relevant information for post_processing in actor database
-                for actor in tqdm(actors, desc='Getting movie actors info', position=1):
-                    actor_db.push_new_appearance(actor, api_key)
+            # save relevant information for post_processing in actor database
+            for actor in tqdm(actors, desc='Getting movie actors info', position=1):
+                actor_db.push_new_appearance(actor, api_key)
 
         # add row to extended dataset
-        rowDF = pd.DataFrame([[index, title, year, row['release date'] if dataset == 'ml-100k' else year, genre_ids, actors, 0, 0, 0]], columns=column_names)
+        rowDF = pd.DataFrame([[index, title, year, row['release date'] if dataset == 'ml-100k' else year, genre_ids, actors]], columns=column_names)
         downloaded_data = downloaded_data.append(rowDF, ignore_index=True)
-
-    if post_processing:
-        for index, row in tqdm(downloaded_data.iterrows(), total=downloaded_data.shape[0], position=0, desc='Post-processing'):
-            # filter actors that don't appear at least min_actor_appearances in dataset, and reindex those who do
-            new_actors = [actor_db.get_artist_rank_by_id(id) for id in row['actors'] if actor_db.get_artist_appearances_by_id(id) >= min_actor_appearances]
-            downloaded_data.at[index, 'actors'] = new_actors
-
-            if len(new_actors) == 0:
-                downloaded_data.at[index, 'flag3'] = 1
-            elif min(new_actors) < 11:
-                downloaded_data.at[index, 'flag1'] = 1
-            elif min(new_actors) < 25:
-                downloaded_data.at[index, 'flag2'] = 1
-            else:
-                downloaded_data.at[index, 'flag3'] = 1
 
     # save dataset
     downloaded_data.to_csv('../data/online_data/extended-' + dataset + '.csv')
@@ -386,9 +371,7 @@ if __name__ == '__main__':
     parser.add_argument("--dataset", default='ml-100k', choices=['ml-100k', 'ml-1m'], help="Dataset to extend")
     parser.add_argument("--no_genres", default=False, action='store_true', help="Skip adding genres to extended dataset")
     parser.add_argument("--no_actors", default=False, action='store_true', help="Skin adding actors to extended dataset")
-    parser.add_argument("--no_post_processing", default=False, action='store_true', help="Avoids deleting marginal actors from dataset")
-    parser.add_argument("--min_actor_appearances", default=10, type=int, help="Minimum appearances needed by an actor not to be deleted from extended dataset during post-processing")
 
     args = parser.parse_args()
-    extend_dataset(args.api_key, args.dataset, not args.no_genres, not args.no_actors, not args.no_post_processing, args.min_actor_appearances)
+    extend_dataset(args.api_key, args.dataset, not args.no_genres, not args.no_actors)
 
