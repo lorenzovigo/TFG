@@ -110,10 +110,11 @@ Each argument will be followed by some examples, which do not represent all thei
 Allows to use models with the **MovieLens 1M** dataset.
 
 	python main.py --dataset=ml-1m
+	python tune.py --dataset=ml-1m
 
 `--algo_name=<value>`
 
-Defines the model that is either being used or that is being tuned. Default `<value>` is `mf`, while `fm` is also available. They respectively refer to **Matrix Factorization** and **Factorization Machines**
+Defines the model that is either being used or that is being tuned. Default `<value>` is `mf`, while `fm` is also available. They respectively refer to **Matrix Factorization** and **Factorization Machines**.
 
 	python main.py --algo_name=fm
 	python main.py --dataset=ml-1m --algo_name=mf
@@ -139,18 +140,19 @@ Disables the addition of context to the model.
 Respectively, adds **genres and actors as side-information** to the model. **These arguments require having extended the selected dataset accordingly**. Also, **GCE must be enabled**.
 
 	python main.py --algo_name=fm --gce --actors --genres
-	python main.py --dataset=ml-1m --actors
+	python main.py --dataset=ml-1m --gce --actors
+	python tune.py --gce --actors --genres
 	
 `--prepro=<value>`
 
-Defines the pre-processing method use. `<value>`may be `origin`, `Ncore` or `<int>filter` where `<int>` is an integer. Default value is `10filter`.
+Defines the pre-processing method used. `<value>` may be `origin`, `Ncore` or `<int>filter` where `<int>` is an integer. Default value is `10filter`.
 
 	python main.py --algo_name=fm --prepro=7filter
 	python main.py --dataset=ml-1m --context --prepro=origin
 
 `--num_ng=<value>`
 
-Defines number of negative samples per positive sample in the training set. `<value>` should be an integer and its default value is 4.
+Defines the number of negative samples per positive sample in the training set. `<value>` should be an integer and its default value is 4.
 
 	python main.py --num_ng=10
 
