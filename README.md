@@ -86,7 +86,7 @@ The included script `tune.py` implements the search of **optimal parameters** fo
 
 This script has several available arguments, which are explained at the end of this file. The results will be saved in the `tune_logs` folder.
 
-## **Main exectuion**
+## **Main execution (required)**
 
 The **main script** is in charge of **splitting** the available datasets (which may be extended or not and post-processed or not), performing **negative sampling**, building the adjacency matrix, **building the graph structure** (if needed), initializing and **training the models** and **evaluating their performances**. This pipeline can be executed by running the following command in the `code` folder:
 
