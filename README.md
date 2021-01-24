@@ -79,7 +79,6 @@ Where `<value>` is an integer, number of movies the actor should take part in in
 
 
 ## **Tune your model settings (optional)**
-_____
 
 The included script `tune.py` implements the search of **optimal parameters** for each model using **Bayesian Optimization**. You may run this script by executing the following command in the `code` folder:
 
@@ -88,7 +87,6 @@ The included script `tune.py` implements the search of **optimal parameters** fo
 This script has several available arguments, which are explained at the end of this file. The results will be saved in the `tune_logs` folder.
 
 ## **Main exectuion**
-_____
 
 The **main script** is in charge of **splitting** the available datasets (which may be extended or not and post-processed or not), performing **negative sampling**, building the adjacency matrix, **building the graph structure** (if needed), initializing and **training the models** and **evaluating their performances**. This pipeline can be executed by running the following command in the `code` folder:
 
@@ -192,12 +190,21 @@ Defines the number of epochs the tuning script will be run for.
 
 
 *Other arguments:*
+
 `--not_early_stopping`: Disables the early stopping mechanism.
+
 `--logsname=<value>`: Sets a specific log file name, where `<value>` is a string.
+
 `--neg_sampling_each_epoch`: Enables generating different negative samplings for each epoch.
+
 `--cut_down_data`: reduces the number of interactions included in the dataset.
+
 `--test_method=loo`: allows to change test splitting method from Time Aware Leave One Out (tloo) to Leave One Out (loo).
+
 `--val_method=loo`: allows to change validation splitting method from tloo to loo.
+
 `--reg_1=<value>` and `--reg_2=<value>`: L1 and L2 regularization, respectively. `<value>` is a float.
+
 `--dropout=<value>`: dropout rate to prevent overfitting. `<value>` is a float.
+
 `--act_func=<value>` and `--out_func=<value>`: define the activation method in interior and output layers respectively. `<value>` should be a string.
