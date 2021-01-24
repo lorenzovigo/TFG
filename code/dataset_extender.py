@@ -6,6 +6,21 @@ from utils.ml1m_genredb import Ml1M_GenreDB
 from tqdm import tqdm
 
 def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True):
+    """Method that may add genre and actor information to the dataset
+
+    Parameters
+    ----------
+    api_key: str
+        MovieDB API Key needed to make requests
+    dataset : str, optional
+        Dataset name to download
+    add_genres : bool, optional
+        If genres should be added to the dataset
+    add_actors : bool, optional
+        If actors should be added to the dataset
+    """
+
+    # Read selected dataset movie list from downloaded file
     if dataset == 'ml-100k':
         df = pd.read_csv('../data/ml-100k/u.item', sep='|', header=None,
                          names=['movie id', 'movie title', 'release date', 'video release date',
@@ -22,22 +37,24 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True)
     elif dataset == 'ml-1m':
         df = pd.read_csv(f'../data/ml-1m/movies.dat', sep='::', header=None,
                          names=['index', 'movie title', 'genres'], engine='python')
+        # Maps genre names to genre indices
         genre_db = Ml1M_GenreDB()
 
     else:
         raise ValueError('Invalid Dataset Error')
 
-    # names given to columns in extended dataset
+    # Names given to columns in extended dataset
     column_names = ['id', 'title', 'year', 'release date', 'genres', 'actors']
 
-    # extended dataset
+    # Where we will save all information on movies
     downloaded_data = pd.DataFrame(columns=column_names)
 
-    # dataset including information about artists, needed for post_processing
+    # Dataset including information about artists, needed for post_processing
     actor_db = ActorDB(dataset=dataset)
 
+    # For every movie
     for index, row in tqdm(df.iterrows(), total=df.shape[0], position=0, desc='Getting movies info'):
-        # consider a title finished when first dot or parenthesis is found
+        # Consider a title finished when first dot or parenthesis is found
         fp = row['movie title'].find(' (')
         fc = row['movie title'].find(',')
         if fp == -1 or fc == -1:
@@ -45,17 +62,17 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True)
         else:
             eotitle = min(fp, fc)
 
-        # split title and year (release year and title year might not be the same, and both of them might be wrong)
+        # Split title and year (release year and title year might not be the same, and both of them might be wrong)
         title = row['movie title'][:eotitle]
         year = row['movie title'][-5:-1]
 
-        # error control
+        # Error control
         if dataset == 'ml-100k':
             index, title, year = error_control_100k(index, title, year)
         elif dataset == 'ml-1m':
             index, title, year = error_control_1m(index, title, year)
 
-        # process movie genres included in movielens
+        # Process movie genres included in movielens
         if add_genres:
             if dataset == 'ml-100k':
                 genre_id = 0
@@ -67,7 +84,7 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True)
             elif dataset == 'ml-1m':
                 genre_ids = [genre_db.push(genre) for genre in row['genres'].split('|')]
 
-        # process actors that take part in movie according to movieDB
+        # Process actors that take part in movie according to movieDB
         if add_actors:
             if index == -1: # for unknown movies
                     actors = []
@@ -76,18 +93,29 @@ def extend_dataset(api_key, dataset='ml-100k', add_genres=True, add_actors=True)
             else: # general case
                 actors = rh.getMovieActorIds(rh.getMovieDBId(title, year, api_key), api_key)
 
-            # save relevant information for post_processing in actor database
+            # Save relevant information for post_processing in actor database
             for actor in tqdm(actors, desc='Getting movie actors info', position=1):
                 actor_db.push_new_appearance(actor, api_key)
 
-        # add row to extended dataset
+        # Add row to extended dataset
         rowDF = pd.DataFrame([[index, title, year, row['release date'] if dataset == 'ml-100k' else year, genre_ids, actors]], columns=column_names)
         downloaded_data = downloaded_data.append(rowDF, ignore_index=True)
 
-    # save dataset
+    # Save dataset
     downloaded_data.to_csv('../data/online_data/extended-' + dataset + '.csv')
 
 def error_control_100k(index, title, year):
+    """Some movie information in the dataset doesn't match the information on the same movie included in MovieDB. This method fixes it.
+
+    Parameters
+    ----------
+    index : int
+        Movie index in the dataset
+    title : str
+        Movie title
+    year : int
+        Movie release year
+    """
     if index == 562 or index == 1409:
         index = -2
     if index == 1358:
@@ -174,6 +202,18 @@ def error_control_100k(index, title, year):
     return index, title, year
 
 def error_control_1m(index, title, year):
+    """Some movie information in the dataset doesn't match the information on the same movie included in MovieDB. This method fixes it.
+
+    Parameters
+    ----------
+    index : int
+        Movie index in the dataset
+    title : str
+        Movie title
+    year : int
+        Movie release year
+    """
+
     if index in [760, 1091, 1139, 1397, 1400, 1418, 1718, 3491, 3780]:
         index = -1
     if index == 3001:

@@ -1,13 +1,9 @@
 import re
 from prettytable import PrettyTable
-from IPython import embed
 
 
 def param_extract(args):
-    param_set = [
-        'batch_size', 'dropout', 'factors', 'lr',
-        # 'num_layers', 'num_ng', 'reg_1', 'reg_2',
-    ]
+    param_set = ['batch_size', 'dropout', 'factors', 'lr']
 
     print('Decide which parameter you want to tune')
     bar = 0

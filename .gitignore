@@ -4,3 +4,4 @@ data/*
 !data/datasources.txt
 __pycache__/
 logs/
+tune_logs/

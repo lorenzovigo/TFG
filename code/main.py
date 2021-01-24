@@ -77,7 +77,6 @@ if __name__ == '__main__':
         writer = SummaryWriter(log_dir=f'logs/nologs/logs/')
 
 
-    # p = multiprocessing.Pool(args.num_workers)
     # FIX SEED AND SELECT DEVICE
     seed = 1234
     if torch.cuda.is_available():
@@ -97,6 +96,7 @@ if __name__ == '__main__':
     df, users, items = load_rate(args.dataset, args.prepro, context=args.context, gce_flag=args.gce,
                                  cut_down_data=args.cut_down_data)
     df = df.astype(np.int64)
+    # reindex items and context if needed to guarantee different ids
     df['item'] = df['item'] + users
     if args.context:
         df = add_last_clicked_item_context(df, args.dataset)
@@ -104,17 +104,12 @@ if __name__ == '__main__':
         assert df['item'].tail().values[-1] > 0
         df['context'] = df['context'] + items
 
-
-
     ''' SPLIT DATA '''
     train_set, test_set = split_test(df, args.test_method, args.test_size)
     train_set, val_set, _ = split_validation(train_set, val_method=args.test_method, list_output=False)
 
     df = pd.concat([train_set, test_set], ignore_index=True)
     dims = np.max(df.to_numpy().astype(int), axis=0) + 1
-    if args.dataset in ['yelp']:
-        train_set['timestamp'] = pd.to_datetime(train_set['timestamp'], unit='ns')
-        test_set['timestamp'] = pd.to_datetime(test_set['timestamp'], unit='ns')
 
     ''' GET GROUND-TRUTH AND CANDIDATES '''
     # get ground truth
@@ -135,7 +130,10 @@ if __name__ == '__main__':
         sample_method=args.sample_method, 
         sample_ratio=args.sample_ratio,
     )
+    # negative sampling and adjacency matrix construction
     neg_set, adj_mx = sampler.transform(train_set, is_training=True, context=args.context, pair_pos=None)
+
+    # create graph needed structure if it is activated
     if args.gce:
         # embed()
         if args.mh > 1:
@@ -143,6 +141,7 @@ if __name__ == '__main__':
             adj_mx = adj_mx.__pow__(int(args.mh))
         X = identity(adj_mx.shape[0])
 
+        # we may add side-information to X if activated
         if args.genres or args.actors:
             extended_dataset = pd.read_csv('../data/online_data/extended-' + args.dataset + '.csv', sep=',')
             movie_id_mapping = train_set[['item', 'original item id']].copy().drop_duplicates().sort_values(by=['item']).reset_index(drop=True)
@@ -185,17 +184,19 @@ if __name__ == '__main__':
 
         X = sparse_mx_to_torch_sparse_tensor(X).to(device)
         edge_idx, edge_attr = from_scipy_sparse_matrix(adj_mx)
-        # TODO: should I pow the matrix here?
         edge_idx = edge_idx.to(device)
 
+    # these columns are not neeeded anymore
     train_set.drop(['original item id'], axis=1)
     test_set.drop(['original item id'], axis=1)
     val_set.drop(['original item id'], axis=1)
 
+    # create training set
     train_dataset = PairData(train_set, sampler=sampler, adj_mx=adj_mx, is_training=True, context=args.context)
 
     user_num = dims[0]
     max_dim = dims[2] if args.context else dims[1]
+    # choose model
     if args.algo_name == 'mf':
         from model.pair.MFRecommender import PairMF
         model = PairMF(
@@ -252,8 +253,8 @@ if __name__ == '__main__':
     hours, rem = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(rem, 60)
 
-    time_log.write(f'{args.dataset}_{args.prepro}_{args.test_method}_{args.problem_type}{args.algo_name}'
-                   f'_{args.loss_type}_{args.sample_method}_GCE={args.gce},  {minutes:.2f} min, {seconds:.4f}seconds' + '\n')
+    time_log.write(f'{args.dataset}_{args.prepro}_{args.test_method}_pair{args.algo_name}'
+                   f'_BPR_{args.sample_method}_GCE={args.gce},  {minutes:.2f} min, {seconds:.4f}seconds' + '\n')
     time_log.close()
 
     print('+'*80)

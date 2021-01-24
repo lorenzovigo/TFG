@@ -48,7 +48,7 @@ class GCE(torch.nn.Module):
         super().__init__()
 
         self.A = train_mat_edges
-        self.features = features  # so far, Identity matrix
+        self.features = features
         # GCNConv applies the convolution over the graph
         self.GCN_module = GCNConv(field_dims, embed_dim)
 

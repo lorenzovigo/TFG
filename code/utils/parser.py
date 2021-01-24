@@ -24,30 +24,18 @@ def parse_args():
                         action='store_true',
                         default=False,
                         help='activate to use GCE layer instead of current embbedding layer')
-    # parser.add_argument('--reg2',
-    #                     action='store_true',
-    #                     default=False,
-    #                     help='activate to use regularizations')
     parser.add_argument('--cut_down_data',
                         action='store_true',
                         default=False,
                         help='activate to use half interactions per user --> reduce dataset size')
-    parser.add_argument('--mf',
-                        action='store_true',
-                        default=False,
-                        help='activate to use MF in NFM ')
     parser.add_argument('--mh',
                         type=int,
                         default=1,
                         help='HOPS TO ENABLE -- MULTI HOP FUNCTION')
-    parser.add_argument('--problem_type', 
-                        type=str, 
-                        default='pair',
-                        help='pair-wise or point-wise')
     parser.add_argument('--algo_name', 
                         type=str, 
                         default='mf',
-                        help='algorithm to choose')
+                        help='algorithm to choose: mf, fm')
     parser.add_argument('--dataset', 
                         type=str, 
                         default='ml-100k',
@@ -103,6 +91,14 @@ def parse_args():
                         type=int, 
                         default=4,
                         help='negative sampling number')
+    parser.add_argument('--genres',
+                         action='store_true',
+                         default=False,
+                         help='use genres from extended dataset')
+    parser.add_argument('--actors',
+                         action='store_true',
+                         default=False,
+                         help='use actors from extended dataset')
 
     # algo settings
     parser.add_argument('--factors', 
@@ -127,10 +123,6 @@ def parse_args():
     parser.add_argument('--lr', 
                         default=0.001,
                         help='learning rate')
-    # parser.add_argument('--lr',
-    #                     type=float,
-    #                     default=0.001,
-    #                     help='learning rate')
     parser.add_argument('--epochs', 
                         type=int, 
                         default=50,
@@ -142,10 +134,6 @@ def parse_args():
     parser.add_argument('--batch_size',
                         default=256,
                         help='batch size for training')
-    # parser.add_argument('--batch_size',
-    #                     type=int,
-    #                     default=256,
-    #                     help='batch size for training')
     parser.add_argument('--num_layers', 
                         type=int, 
                         default=1,
@@ -162,14 +150,6 @@ def parse_args():
                         action='store_false', 
                         default=True, 
                         help='whether do batch normalization in interior layers')
-    parser.add_argument('--genres',
-                         action='store_true',
-                         default=False,
-                         help='use genres from extended dataset')
-    parser.add_argument('--actors',
-                         action='store_true',
-                         default=False,
-                         help='use actors from extended dataset')
 
     args = parser.parse_args()
 

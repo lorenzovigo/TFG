@@ -1,1 +1,7 @@
 ml-100k_10filter_tloo_pairmf_BPR_uniform_GCE=False,  3.00 min, 59.7906seconds
+ml-100k_10filter_tloo_pairmf_BPR_uniform_GCE=False,  0.00 min, 18.9819seconds
+ml-100k_10filter_tloo_pairmf_BPR_uniform_GCE=False,  0.00 min, 19.0577seconds
+ml-100k_10filter_tloo_pairmf_BPR_uniform_GCE=False,  0.00 min, 18.6767seconds
+ml-100k_10filter_tloo_pairmf_BPR_uniform_GCE=False,  0.00 min, 15.8197seconds
+ml-100k_10filter_tloo_pairfm_BPR_uniform_GCE=False,  0.00 min, 17.5198seconds
+ml-100k_10filter_tloo_pairfm_BPR_uniform_GCE=True,  34.00 min, 8.2964seconds

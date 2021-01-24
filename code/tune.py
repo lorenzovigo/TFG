@@ -1,4 +1,5 @@
 import os
+import ast
 import time
 import argparse
 import numpy as np
@@ -24,6 +25,7 @@ from utils.metrics import precision_at_k, recall_at_k, map_at_k, hr_at_k, ndcg_a
 from utils.tunner import param_extract, confirm_space
 
 from main import build_evaluation_set
+from scipy.sparse import identity, lil_matrix, hstack
 
 
 class Struct:
@@ -32,6 +34,7 @@ class Struct:
 
 
 def opt_func(space):
+    # function to optimize: running training and evalaution and maximizes score (which is passed as negative value)
 
     ''' FORMAT DATA AND CHOOSE MODEL '''
     f = space['f']
@@ -41,7 +44,7 @@ def opt_func(space):
     max_dim = dims[2] if args.context else dims[1]
 
     if args.algo_name == 'mf':
-        from daisy.model.pair.MFRecommender import PairMF
+        from model.pair.MFRecommender import PairMF
 
         model = PairMF(
             user_num,
@@ -58,7 +61,7 @@ def opt_func(space):
             dropout=args.dropout
         )
     elif args.algo_name == 'fm':
-        from daisy.model.pair.FMRecommender import PairFM
+        from model.pair.FMRecommender import PairFM
 
         model = PairFM(
             user_num,
@@ -107,11 +110,13 @@ if __name__ == '__main__':
     df, users, items = load_rate(args.dataset, args.prepro, context=args.context, gce_flag=args.gce,
                                  cut_down_data=args.cut_down_data)
     df = df.astype(np.int64)
+    # reindex items and context if needed to guarantee different ids
     df['item'] = df['item'] + users
     if args.context:
         df = add_last_clicked_item_context(df, args.dataset)
         # check last number is positive
         assert df['item'].tail().values[-1] > 0
+        df['context'] = df['context'] + items
 
     ''' SPLIT DATA '''
     train_set, test_set = split_test(df, args.test_method, args.test_size)
@@ -122,9 +127,6 @@ if __name__ == '__main__':
     # test_set = pd.read_csv(f'./experiment_data/test_{args.dataset}_{args.prepro}_{args.test_method}.dat')
     df = pd.concat([train_set, test_set], ignore_index=True)
     dims = np.max(df.to_numpy().astype(int), axis=0) + 1
-    if args.dataset in ['yelp']:
-        train_set['timestamp'] = pd.to_datetime(train_set['timestamp'], unit='ns')
-        test_set['timestamp'] = pd.to_datetime(test_set['timestamp'], unit='ns')
 
     ''' GET GROUND-TRUTH AND CANDIDATES '''
     # get ground truth
@@ -138,6 +140,7 @@ if __name__ == '__main__':
 
     print('=' * 50, '\n')
 
+    ''' FORMAT DATA '''
     sampler = Sampler(
         dims,
         num_ng=args.num_ng,
@@ -145,15 +148,74 @@ if __name__ == '__main__':
         sample_ratio=args.sample_ratio,
     )
 
+    # negative sampling and adjacency matrix construction
     neg_set, adj_mx = sampler.transform(train_set, is_training=True, context=args.context, pair_pos=None)
+
+    # create graph needed structure if it is activated
     if args.gce:
+        # embed()
         if args.mh > 1:
             print(f'[ MULTI HOP {args.mh} ACTIVATED ]')
             adj_mx = adj_mx.__pow__(int(args.mh))
-        X = sparse_mx_to_torch_sparse_tensor(identity(adj_mx.shape[0])).to(device)
+        X = identity(adj_mx.shape[0])
+
+        # we may add side-information to X if activated
+        if args.genres or args.actors:
+            extended_dataset = pd.read_csv('../data/online_data/extended-' + args.dataset + '.csv', sep=',')
+            movie_id_mapping = train_set[['item', 'original item id']].copy().drop_duplicates().sort_values(
+                by=['item']).reset_index(drop=True)
+
+        if args.genres:
+            # Check how many genres there are. Since we know we saved genres in order in every movie we can do this:
+            num_genres = max([sublist[-1] if sublist else -1 for sublist in
+                              extended_dataset['genres'].apply(ast.literal_eval).tolist()]) + 1
+            # If we can't guarantee genres are in order, use this: (less efficient)
+            # num_genres = max([x for sublist in extended_dataset['genres'].apply(ast.literal_eval).tolist() for x in sublist])
+
+            # Add genre information to a new matrix and then concatenate with X
+            genre_extension_matrix = lil_matrix((adj_mx.shape[0], num_genres), dtype=np.int8)
+            for index, row in tqdm(movie_id_mapping.iterrows(), desc='Adding genres'):
+                genres = extended_dataset.loc[
+                    extended_dataset['id'] == row['original item id'] - 1, 'genres'].reset_index(drop=True)
+                if not genres.empty:
+                    for genre in ast.literal_eval(genres[0]):
+                        genre_extension_matrix[row['item'] + 1, genre] = 1
+            X = hstack([X, genre_extension_matrix])
+
+        if args.actors:
+            # Check how many genres there are. Since we know we saved genres in order in every movie we can do this:
+            num_actors = max([sublist[-1] if sublist else -1 for sublist in
+                              extended_dataset['actors'].apply(ast.literal_eval).tolist()]) + 1
+            print(num_actors)
+            # Add genre information to a new matrix and then concatenate with X
+            actor_extension_matrix = lil_matrix((adj_mx.shape[0], num_actors + 3), dtype=np.int8)
+            for index, row in tqdm(movie_id_mapping.iterrows(), desc='Adding actors'):
+                actors = extended_dataset.loc[
+                    extended_dataset['id'] == row['original item id'] - 1, 'actors'].reset_index(drop=True)
+                if not actors.empty:
+                    for actor in ast.literal_eval(actors[0]):
+                        actor_extension_matrix[row['item'] + 1, actor] = 1
+                for i in range(1, 4):
+                    flag = extended_dataset.loc[
+                        extended_dataset['id'] == row['original item id'] - 1, 'flag' + str(i)].reset_index(drop=True)
+                    if not flag.empty:
+                        actor_extension_matrix[row['item'], i * -1] = flag[0]
+            X = hstack([X, actor_extension_matrix])
+
+        X = X.transpose()
+
         # We retrieve the graph's edges and send both them and graph to device in the next two lines
+
+        X = sparse_mx_to_torch_sparse_tensor(X).to(device)
         edge_idx, edge_attr = from_scipy_sparse_matrix(adj_mx)
         edge_idx = edge_idx.to(device)
+
+    # these columns are not neeeded anymore
+    train_set.drop(['original item id'], axis=1)
+    test_set.drop(['original item id'], axis=1)
+    val_set.drop(['original item id'], axis=1)
+
+    # create training set
     train_dataset = PairData(train_set, sampler=sampler, adj_mx=adj_mx, is_training=True, context=args.context)
 
     print('='*50, '\n')
@@ -161,16 +223,14 @@ if __name__ == '__main__':
     tune_log_path = 'tune_logs'
     os.makedirs(tune_log_path, exist_ok=True)
 
-    f = open(tune_log_path + "/" + f'{args.loss_type}_{args.algo_name}_GCE={args.gce}_{args.dataset}_{args.prepro}_{args.val_method}.csv',
+    f = open(tune_log_path + "/" + f'BPR_{args.algo_name}_GCE={args.gce}_{args.dataset}_{args.prepro}_{args.val_method}.csv',
              'w', encoding='utf-8')
     f.write('HR, NDCG, best_epoch, num_ng, factors, dropout, lr, batch_size, reg_1, reg_2' + '\n')
     f.flush()
 
-    # param_limit = param_extract(args)
-    # param_dict = confirm_space(param_limit)
-
     args_dict = vars(args)
 
+    # create parameter space for optimization
     lr_range = [0.0001, 0.0005, 0.001, 0.005, 0.01]
     batch_size_range = [256, 512, 1024, 2048]
     do_range = [0, 0.15, 0.5]
@@ -186,6 +246,7 @@ if __name__ == '__main__':
     # trials = pickle.load(open("myfile.p", "rb"))  # then max_evals needs to be set to 200
 
     space = defaultdict(None, args_dict)
+    # optimize
     best = fmin(fn=opt_func,
                 space=space, algo=tpe.suggest,
                 max_evals=100,

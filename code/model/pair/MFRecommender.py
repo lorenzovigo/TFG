@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from model.GCE.gce import GCE
-from IPython import embed
 
 
 class PairMF(nn.Module):

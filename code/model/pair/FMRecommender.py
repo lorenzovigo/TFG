@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from model.GCE.gce import GCE, FactorizationMachine
 import torch.backends.cudnn as cudnn
-from IPython import embed
 
 
 class PairFM(nn.Module):
@@ -63,7 +62,6 @@ class PairFM(nn.Module):
 
     def forward(self, u, i, j, context):
 
-        # embed()
         if context is None:
             embeddings_ui = self.embeddings(torch.stack((u, i), dim=1))
             embeddings_uj = self.embeddings(torch.stack((u, j), dim=1))
@@ -74,13 +72,6 @@ class PairFM(nn.Module):
         # inner prod part
         pred_i = self.fm(embeddings_ui)
         pred_j = self.fm(embeddings_uj)
-
-        # pred_i = embeddings_ui.prod(dim=1).sum(dim=1, keepdim=True)
-        # pred_j = embeddings_uj.prod(dim=1).sum(dim=1, keepdim=True)
-        # add bias
-        # if not self.GCE_flag:
-        #     pred_i += self.bias(torch.stack((u, i), dim=1)).sum() + self.bias_
-        #     pred_j += self.bias(torch.stack((u, j), dim=1)).sum() + self.bias_
 
         return pred_i.view(-1), pred_j.view(-1)
 

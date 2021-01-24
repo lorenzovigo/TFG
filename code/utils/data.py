@@ -35,8 +35,6 @@ class PairData(data.Dataset):
         else:
             assert self.sampler is None and self.adj_mx is None
             self.neg_set = self.set
-            # sampler and adj_mx should be none
-            # self.set == negative_set for evaluation
 
         if self.context:
             for u, i, c, r, js in self.neg_set:

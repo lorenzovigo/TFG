@@ -1,15 +1,11 @@
-import os
 import gc
 import re
-import json
 import random
 import numpy as np
 import pandas as pd
-import scipy.io as sio
 from tqdm import tqdm
 
 from collections import defaultdict
-from IPython import embed
 
 
 def convert_unique_idx(df, col):
@@ -44,8 +40,7 @@ def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_fla
     item_num : int, the number of items
     """
     df = pd.DataFrame()
-    # import mat73
-    # a = mat73.loadmat('data/gen-disease/genes_phenes.mat')
+
     # which dataset will use
     if src == 'ml-100k':
         df = pd.read_csv(f'../data/{src}/u.data', sep='\t', header=None,
@@ -56,8 +51,6 @@ def load_rate(src='ml-100k', prepro='origin', level='ui', context=False, gce_fla
     elif src == 'ml-1m':
         df = pd.read_csv(f'../data/{src}/ratings.dat', sep='::', header=None,
                          names=['user', 'item', 'rating', 'timestamp'], engine='python')
-        # only consider rating >=4 for data density
-        # df = df.query('rating >= 4').reset_index(drop=True).copy()
 
     else:
         raise ValueError('Invalid Dataset Error')
@@ -154,9 +147,7 @@ def add_last_clicked_item_context(df, dataset=''):
     df = df[['user', 'item', 'context', 'rating', 'timestamp', 'original item id']]
     data = df.to_numpy().astype(int)
     assert data[:, 1].min() == data[:, 0].max() + 1
-    # let space for film UNKNOWN
-    # data[:, 1] = data[:, 1].astype(np.int) + 1
-    # empty_film_idx = data[:, 1].min() - 1
+
     empty_film_idx = data[:, 1].max() + 1
     assert data[:, 1].max() + 1 == empty_film_idx
 
@@ -172,8 +163,6 @@ def add_last_clicked_item_context(df, dataset=''):
             aux[:, 2] = np.insert(aux[:-1][:, 1], 0, empty_film_idx)
             sorted_data[sorted_data[:, 0] == u] = aux
 
-    # # user_num == first item number
-    # sorted_data[:, 2] = np.concatenate(([user_num], sorted_data[:-1][:, 1]))
     new_df = pd.DataFrame(data=sorted_data, columns=list(df.columns))
     return new_df
 
